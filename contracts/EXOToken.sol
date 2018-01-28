@@ -15,7 +15,7 @@ contract EXOToken is StandardToken, Ownable {
         uint startTime;
     }
 
-    string public name = "Exon";
+    string public name = "EXO";
     string public symbol = "EXO";
     uint8 public decimals = 18;
     uint tokenCreationTime;
@@ -34,13 +34,11 @@ contract EXOToken is StandardToken, Ownable {
      * @dev Set token information.
      *
      * @param _totalSupply The total supply of tokens -- it's fixed
-     * @param _airdropCarrier The only address privileged to airdrop
      * @param _airdropAmount The amount to airdrops
      * @param _minBalanceAfterAirdrop No airdrop is allowed after the owner's balance hits this
      */
     function EXOToken(
         uint256 _totalSupply,
-        address _airdropCarrier,
         uint256 _airdropAmount,
         uint256 _minBalanceAfterAirdrop
     ) public
@@ -48,7 +46,6 @@ contract EXOToken is StandardToken, Ownable {
         tokenCreationTime = now;
         totalSupply_ = _totalSupply * uint(10)**decimals;
         balances[msg.sender] = totalSupply_;
-        airdropCarrier = _airdropCarrier;
         airdropAmount = _airdropAmount * uint(10)**decimals;
         minBalanceAfterAirdrop = _minBalanceAfterAirdrop * uint(10)**decimals;
     }
@@ -171,9 +168,27 @@ contract EXOToken is StandardToken, Ownable {
     }
 
     /**
+     * @dev Set the address of airdrop carrier.
+     *
+     * @param _airdropCarrier The only address privileged to airdrop
+     */
+    function setAirdropCarrier(address _airdropCarrier) public onlyOwner returns (bool) {
+        airdropCarrier = _airdropCarrier;
+    }
+
+    /**
+     * @dev Get the stake balance of an account.
+     *
+     * @param _staker The staker's account address
+     */
+    function stakeOf(address _staker) public returns (uint256) {
+        return stakes[_staker].balance;
+    }
+
+    /**
      * @dev Internal function to calculate interest for a time period.
      *
-     * @param _interestRatePerYear,
+     * @param _interestRatePerYear //
      * @param _interestCycleLength The length of a cycle in days
      * @param _interestStartTime The start time of an interest period
      * @param _interestEndTime The end time of an interest period
