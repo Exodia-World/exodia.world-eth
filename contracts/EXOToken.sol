@@ -181,7 +181,7 @@ contract EXOToken is StandardToken, Ownable {
      *
      * @param _staker The staker's account address
      */
-    function stakeOf(address _staker) public returns (uint256) {
+    function stakeOf(address _staker) public view returns (uint256) {
         return stakes[_staker].balance;
     }
 
