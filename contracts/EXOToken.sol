@@ -51,16 +51,6 @@ contract EXOToken is StandardToken, Ownable {
     }
 
     /**
-     * @dev Convert token value to its base unit.
-     *
-     * @param _value Supplied token value
-     */
-    modifier toBaseUnit(uint256 _value) {
-        _value = _value * uint(10)**decimals;
-        _;
-    }
-
-    /**
      * @dev Transfer free tokens from the owner's account.
      *
      * The free tokens are added to the _to address' staking balance.
@@ -85,7 +75,7 @@ contract EXOToken is StandardToken, Ownable {
      * Deposited stake is added to the staker's staking balance.
      * @param _value The amount of EXO to deposit
      */
-    function depositStake(uint256 _value) public toBaseUnit(_value) returns (bool) {
+    function depositStake(uint256 _value) public returns (bool) {
         require(balances[msg.sender] >= _value);
 
         uint256 totalBalanceBeforeDeposit = balances[msg.sender].add(stakes[msg.sender].balance);
@@ -106,7 +96,7 @@ contract EXOToken is StandardToken, Ownable {
      * Withdrawn stake is added to the staker's liquid balance.
      * @param _value The amount of EXO to withdraw
      */
-    function withdrawStake(uint256 _value) public toBaseUnit(_value) returns (bool) {
+    function withdrawStake(uint256 _value) public returns (bool) {
         require(stakes[msg.sender].balance >= _value);
 
         uint256 totalBalanceBeforeWithdrawal = balances[msg.sender].add(stakes[msg.sender].balance);
@@ -174,6 +164,7 @@ contract EXOToken is StandardToken, Ownable {
      */
     function setAirdropCarrier(address _airdropCarrier) public onlyOwner returns (bool) {
         airdropCarrier = _airdropCarrier;
+        return true;
     }
 
     /**
