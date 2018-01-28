@@ -15,8 +15,8 @@ contract EXOToken is StandardToken, Ownable {
         uint startTime;
     }
 
-    string public name;
-    string public symbol;
+    string public name = "Exon";
+    string public symbol = "EXO";
     uint8 public decimals = 18;
     uint tokenCreationTime;
 
@@ -31,7 +31,7 @@ contract EXOToken is StandardToken, Ownable {
     event UpdateStakeBalance(address indexed staker, uint256 indexed balance);
     
     /**
-     * @dev Set the necessary values for airdrop, stake payout, etc.
+     * @dev Set token information.
      *
      * @param _totalSupply The total supply of tokens -- it's fixed
      * @param _airdropCarrier The only address privileged to airdrop
@@ -39,16 +39,12 @@ contract EXOToken is StandardToken, Ownable {
      * @param _minBalanceAfterAirdrop No airdrop is allowed after the owner's balance hits this
      */
     function EXOToken(
-        string _name,
-        string _symbol,
         uint256 _totalSupply,
         address _airdropCarrier,
         uint256 _airdropAmount,
         uint256 _minBalanceAfterAirdrop
     ) public
     {
-        name = _name;
-        symbol = _symbol;
         tokenCreationTime = now;
         totalSupply_ = _totalSupply * uint(10)**decimals;
         balances[msg.sender] = totalSupply_;
@@ -128,11 +124,14 @@ contract EXOToken is StandardToken, Ownable {
         return true;
     }
 
+    /**
+     * @dev Update a staker's balance with staking interest.
+     */
     function updateStakeBalance() public returns (uint256) {
         uint256 interest = calculateInterest();
         require(balances[owner] >= interest);
-        balances[owner] = balances[owner].sub(interest);
 
+        balances[owner] = balances[owner].sub(interest);
         stakes[msg.sender].balance = stakes[msg.sender].balance.add(interest);
         stakes[msg.sender].startTime = now;
 
@@ -140,6 +139,14 @@ contract EXOToken is StandardToken, Ownable {
         return stakes[msg.sender].balance;
     }
 
+    /**
+     * @dev Calculate interest of a staker's balance since last staking.
+     *
+     * Everything is hardcoded to simplify things.
+     * 10% for the first 3 years and 5% for the rest until all tokens have been distributed.
+     * The interest is gained every 7 days.
+     * For example, staking of 5 EXO for 16 days would yield 5 EXO * 0.0273% (rate per day) * 14 (days).
+     */
     function calculateInterest() public view returns (uint256) {
         require(stakes[msg.sender].startTime >= tokenCreationTime);
         require(stakes[msg.sender].startTime <= now);
@@ -147,20 +154,30 @@ contract EXOToken is StandardToken, Ownable {
 
         uint256 totalInterest = 0;
 
+        // 10% for the first 3 years.
         uint interestPeriod = 3 years;
         uint interestEndTime = interestStartTime.add(interestPeriod);
         uint256 interest = _calculateInterest(10, 7 days, tokenCreationTime, interestEndTime);
         totalInterest = totalInterest.add(interest);
 
-        interestPeriod = 500 years;
+        // 5% for the rest.
+        interestPeriod = 500 years; // some nonsensical time (or is it?)
         uint interestStartTime = interestEndTime.add(1);
         interestEndTime = interestStartTime.add(interestPeriod);
         _calculateInterest(5, 7 days, interestStartTime, interestEndTime);
         totalInterest = totalInterest.add(interest);
 
-        return totalInterest;
+        return balances[owner] >= totalInterest ? totalInterest : balances[owner];
     }
 
+    /**
+     * @dev Internal function to calculate interest for a time period.
+     *
+     * @param _interestRatePerYear,
+     * @param _interestCycleLength The length of a cycle in days
+     * @param _interestStartTime The start time of an interest period
+     * @param _interestEndTime The end time of an interest period
+     */
     function _calculateInterest(
         uint8 _interestRatePerYear,
         uint _interestCycleLength,
@@ -170,8 +187,11 @@ contract EXOToken is StandardToken, Ownable {
     {
         uint256 interest = 0;
         if (now >= _interestStartTime && now <= _interestEndTime) {
+            // Example: 34 days / 7 days = 4 cycles with a remainder.
             uint interestCycles = now.sub(stakes[msg.sender].startTime).div(_interestCycleLength);
+            // Example: 4 cycles * 7 days = 28 days.
             uint eligibleStakingDays = interestCycles.mul(_interestCycleLength);
+            // Example: interest = balance * (10%/365 * 28 days).
             interest = stakes[msg.sender].balance.mul(_interestRatePerYear).mul(eligibleStakingDays).div(36500);
         }
         return interest;
