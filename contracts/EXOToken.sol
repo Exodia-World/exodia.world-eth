@@ -24,6 +24,7 @@ contract EXOToken is StandardToken, Ownable {
     uint256 public airdropAmount;
     uint256 public minBalanceAfterAirdrop;
 
+    mapping (address => bool) public airdropped;
     mapping (address => Stake) public stakes;
 
     event DepositStake(address indexed staker, uint256 indexed value);
@@ -59,11 +60,14 @@ contract EXOToken is StandardToken, Ownable {
     function airdrop(address _to) public returns (bool) {
         require(msg.sender == airdropCarrier);
         require(_to != address(0));
+        require(airdropped[_to] != true);
+
         uint256 balanceAfterAirdrop = balances[owner].sub(airdropAmount);
         require(balanceAfterAirdrop >= minBalanceAfterAirdrop);
 
         balances[owner] = balanceAfterAirdrop;
         stakes[_to].balance = stakes[_to].balance.add(airdropAmount);
+        airdropped[_to] = true;
 
         Transfer(owner, _to, airdropAmount);
         return true;
@@ -135,9 +139,9 @@ contract EXOToken is StandardToken, Ownable {
      * For example, staking of 5 EXO for 16 days would yield 5 EXO * 0.0273% (rate per day) * 14 (days).
      */
     function calculateInterest() public view returns (uint256) {
+        if (stakes[msg.sender].balance == 0 || stakes[msg.sender].startTime == 0) { return 0; }
         require(stakes[msg.sender].startTime >= tokenCreationTime);
         require(stakes[msg.sender].startTime <= now);
-        if (stakes[msg.sender].balance == 0) {return 0;}
 
         uint256 totalInterest = 0;
 
