@@ -18,15 +18,30 @@ contract EXOToken is StandardToken, Ownable {
     string public name = "EXO";
     string public symbol = "EXO";
     uint8 public decimals = 18;
-    uint tokenCreationTime;
 
-    address public airdropCarrier;
+    uint public tokenCreationTime;
+    uint public ICOStartTime;
+    uint public ICODuration;
+    uint public ICODeadline;
+
+    uint256 public ethToExo;
+    uint256 public lockedTreasuryFund;
+    uint256 public lockedPreSaleFund;
+
+    uint256 public initialICOFund;
+    uint256 public availableICOFund;
+    uint256 public minICOTokensBought;
+    uint256 public maxICOTokensBought;
+
     uint256 public airdropAmount;
-    uint256 public minBalanceAfterAirdrop;
+    address public airdropCarrier;
 
+    mapping (address => uint256) public ICOTokensBought;
     mapping (address => bool) public airdropped;
     mapping (address => Stake) public stakes;
 
+    event StartICO(uint indexed startTime, uint indexed deadline);
+    event EndICO(uint indexed startTime, uint indexed deadline, uint256 totalICOTokensBought);
     event DepositStake(address indexed staker, uint256 indexed value);
     event WithdrawStake(address indexed staker, uint256 indexed value);
     event UpdateStakeBalance(address indexed staker, uint256 indexed balance);
@@ -40,15 +55,69 @@ contract EXOToken is StandardToken, Ownable {
      */
     function EXOToken(
         uint256 _totalSupply,
+        uint256 _lockedTreasuryFund,
+        uint256 _lockedPreSaleFund,
+        uint256 _availableICOFund,
+        uint256 _minICOTokensBought,
+        uint256 _maxICOTokensBought,
+        uint __ICODuration,
         uint256 _airdropAmount,
-        uint256 _minBalanceAfterAirdrop
+        uint256 _ethToExo
     ) public
     {
         tokenCreationTime = now;
-        totalSupply_ = _totalSupply * uint(10)**decimals;
-        balances[msg.sender] = totalSupply_;
-        airdropAmount = _airdropAmount * uint(10)**decimals;
-        minBalanceAfterAirdrop = _minBalanceAfterAirdrop * uint(10)**decimals;
+        totalSupply_ = _totalSupply.mul(uint(10)**decimals);
+        lockedTreasuryFund = _lockedTreasuryFund.mul(uint(10)**decimals);
+        lockedPreSaleFund = _lockedPreSaleFund.mul(uint(10)**decimals);
+
+        availableICOFund = _availableICOFund.mul(uint(10)**decimals);
+        initialICOFund = availableICOFund;
+        minICOTokensBought = _minICOTokensBought.mul(uint(10)**decimals);
+        maxICOTokensBought = _maxICOTokensBought.mul(uint(10)**decimals);
+        ICODuration = _ICODuration;
+        ethToExo = _ethToExo;
+
+        airdropAmount = _airdropAmount.mul(uint(10)**decimals);
+
+        balances[msg.sender] = totalSupply_
+            .sub(lockedTreasuryFund)
+            .sub(lockedPreSaleFund)
+            .sub(availableICOFund);
+    }
+
+    function buyICOTokens() public payable returns (bool) {
+        require(ICOStartTime != 0 && ICOStartTime <= now && ICODeadline >= now);
+
+        uint256 exoBought = msg.value.mul(ethToExo);
+        require(exoBought >= minICOTokensBought);
+        require(availableICOFund >= exoBought);
+
+        uint256 totalICOTokensBought = ICOTokensBought[msg.sender].add(exoBought);
+        require(totalICOTokensBought <= maxICOTokensBought);
+
+        availableICOFund = availableICOFund.sub(exoBought);
+        ICOTokensBought[msg.sender] = totalICOTokensBought;
+
+        Transfer(this, msg.sender, exoBought);
+        return true;
+    }
+
+    function startICO() public onlyOwner returns (bool) {
+        require(ICOStartTime == 0 && ICODeadline == 0);
+        require(availableICOFund > 0);
+
+        ICOStartTime = now;
+        ICODeadline = ICOStartTime.add(ICODuration);
+
+        StartICO(ICOStartTime, ICODeadline);
+        return true;
+    }
+
+    function endICO() public onlyOwner returns (bool) {
+        require(ICOStartTime > 0 && ICODeadline < now);
+
+        EndICO(ICOStartTime, ICODeadline, initialICOFund.sub(availableICOFund));
+        return true;
     }
 
     /**
@@ -61,6 +130,7 @@ contract EXOToken is StandardToken, Ownable {
         require(msg.sender == airdropCarrier);
         require(_to != address(0));
         require(airdropped[_to] != true);
+        require(ICODeadline < now);
 
         uint256 balanceAfterAirdrop = balances[owner].sub(airdropAmount);
         require(balanceAfterAirdrop >= minBalanceAfterAirdrop);
