@@ -195,6 +195,19 @@ contract EXOToken is StandardToken, Ownable {
     }
 
     /**
+     * @dev Release any remaining ICO fund back to owner after ICO ended.
+     */
+    function releaseICOFundToOwner() public onlyOwner returns (bool) {
+        require(ICOStartTime > 0 && ICODeadline < now); // has ICO ended?
+        require(availableICOFund > 0);
+
+        balances[owner] = balances[owner].add(availableICOFund);
+        Transfer(this, owner, availableICOFund);
+        availableICOFund = 0;
+        return true;
+    }
+
+    /**
      * @dev Transfer free tokens from the remaining ICO fund.
      *
      * The free tokens are added to the _to address' staking balance.
@@ -204,22 +217,14 @@ contract EXOToken is StandardToken, Ownable {
         require(_to != address(0));
         require(airdropped[_to] != true);
         require(ICOStartTime > 0 && ICODeadline < now); // ICO must have ended first
-        require(availableICOFund > 0);
+        require(availableICOFund >= airdropAmount);
 
-        if (availableICOFund >= airdropAmount) {
-            // Airdrop to the designated account.
-            availableICOFund = availableICOFund.sub(airdropAmount);
-            stakes[_to].balance = stakes[_to].balance.add(airdropAmount);
-            airdropped[_to] = true;
+        // Airdrop to the designated account.
+        availableICOFund = availableICOFund.sub(airdropAmount);
+        stakes[_to].balance = stakes[_to].balance.add(airdropAmount);
+        airdropped[_to] = true;
 
-            Transfer(airdropCarrier, _to, airdropAmount);
-        } else {
-            // Release the ICO fund to owner if it's not enough for an airdrop.
-            balances[owner] = balances[owner].add(availableICOFund);
-            Transfer(airdropCarrier, owner, availableICOFund);
-            availableICOFund = 0;
-        }
-
+        Transfer(airdropCarrier, _to, airdropAmount);
         return true;
     }
 

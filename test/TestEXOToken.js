@@ -1,19 +1,46 @@
 const BN = require('bn.js');
 const EXOToken = artifacts.require('EXOToken');
+const helpers = require('./helpers');
 const exp = (new BN(10)).pow(new BN(18));
+
+const TOTAL_SUPPLY = (new BN(100000000)).mul(exp);
+const LOCKED_TREASURY_FUND = (new BN(10000000)).mul(exp);
+const LOCKED_PRESALE_FUND = (new BN(5000000)).mul(exp);
+const PRESALE_ETH_TO_EXO = new BN(7300);
+const PRESALE_DURATION = new BN(1209600);
+const AVAILABLE_ICO_FUND = (new BN(25000000)).mul(exp);
+const MIN_ICO_TOKENS_BOUGHT_EVERY_PURCHASE = (new BN(3650)).mul(exp);
+const MAX_ICO_TOKENS_BOUGHT = (new BN(18250)).mul(exp);
+const ICO_ETH_TO_EXO = new BN(3650);
+const ICO_DURATION = new BN(2419200);
+const AIRDROP_AMOUNT = (new BN(10)).mul(exp);
 
 contract('EXOToken', accounts => {
   it('should have the correct parameters as deployed', () => {
     return EXOToken.deployed().then(async exo => {
       const totalSupply = await exo.totalSupply.call();
-      const airdropCarrier = await exo.airdropCarrier.call();
+      const lockedTreasuryFund = await exo.lockedTreasuryFund.call();
+      const lockedPreSaleFund = await exo.lockedPreSaleFund.call();
+      const preSaleEthToExo = await exo.preSaleEthToExo.call();
+      const preSaleDuration = await exo.preSaleDuration.call();
+      const availableICOFund = await exo.availableICOFund.call();
+      const minICOTokensBoughtEveryPurchase = await exo.minICOTokensBoughtEveryPurchase.call();
+      const maxICOTokensBought= await exo.maxICOTokensBought.call();
+      const ICOEthToExo = await exo.ICOEthToExo.call();
+      const ICODuration = await exo.ICODuration.call();
       const airdropAmount = await exo.airdropAmount.call();
-      const minBalanceAfterAirdrop = await exo.minBalanceAfterAirdrop.call();
 
-      assert(totalSupply.div(exp).eq(new BN(100000000)), 'The total supply of EXO should be 100000000');
-      assert.equal(airdropCarrier, 0, 'The address of airdrop carrier should be 0');
-      assert(airdropAmount.div(exp).eq(new BN(10)), 'The airdrop amount of EXO per account should be 10');
-      assert(minBalanceAfterAirdrop.div(exp).eq(new BN(50000000)), 'The minimum balance after airdrop should be 50000000');
+      assert(totalSupply.eq(TOTAL_SUPPLY), 'The total supply of EXO should be set');
+      assert(lockedTreasuryFund.eq(LOCKED_TREASURY_FUND), 'The locked treasury fund should be set');
+      assert(lockedPreSaleFund.eq(LOCKED_PRESALE_FUND), 'The locked pre-sale fund should be set');
+      assert(preSaleEthToExo.eq(PRESALE_ETH_TO_EXO), 'The exchange rate from ETH to EXO at pre-sale should be set');
+      assert(preSaleDuration.eq(PRESALE_DURATION), 'The pre-sale duration should be set');
+      assert(availableICOFund.eq(AVAILABLE_ICO_FUND), 'The ICO fund should be set');
+      assert(minICOTokensBoughtEveryPurchase.eq(MIN_ICO_TOKENS_BOUGHT_EVERY_PURCHASE), 'The minimum ICO tokens for every purchase should be set');
+      assert(maxICOTokensBought.eq(MAX_ICO_TOKENS_BOUGHT), 'The maximum ICO tokens for all purchases should be set');
+      assert(ICOEthToExo.eq(ICO_ETH_TO_EXO), 'The exchange rate from ETH to EXO at ICO should be set');
+      assert(ICODuration.eq(ICO_DURATION), 'The ICO duration should be set');
+      assert(airdropAmount.eq(AIRDROP_AMOUNT), 'The airdrop amount of EXO per account should be set');
     });
   });
 
@@ -22,10 +49,15 @@ contract('EXOToken', accounts => {
       const airdropCarrier = accounts[2];
       const recipient = accounts[4];
       const airdropAmount = await exo.airdropAmount.call();
-      const expectedOwnerBalance = (await exo.balanceOf.call(accounts[0])).sub(airdropAmount);
+      const expectedICOFund = (await exo.availableICOFund.call()).sub(airdropAmount);
       const expectedStakeBalance = (await exo.stakeOf.call(recipient)).add(airdropAmount);
 
       await exo.setAirdropCarrier(airdropCarrier);
+      await exo.startPreSale();
+      await helpers.increaseTime(PRESALE_DURATION);
+      // await exo.startICO();
+      // await helpers.increaseTime(ICO_DURATION);
+
       exo.airdrop(recipient, {from: airdropCarrier})
         .then(async result => {
           assert.equal(parseInt(result.receipt.status, 16), 1, 'The airdrop should complete');
@@ -33,15 +65,16 @@ contract('EXOToken', accounts => {
           for (let i = 0; i < result.logs.length; i++) {
             const log = result.logs[i];
             if (log.event === 'Transfer') {
-              assert.equal(log.args.from, accounts[0], 'The airdrop should be transferred from owner');
+              assert.equal(log.args.from, airdropCarrier, 'The airdrop should be transferred from carrier');
               assert.equal(log.args.to, recipient, 'The airdrop should be transferred to recipient');
               assert(airdropAmount.div(exp).eq(new BN(log.args.value/exp)), 'The airdrop value should be as configured');
             }
           }
-          const ownerBalance = await exo.balanceOf.call(accounts[0]);
+          const availableICOFund = await exo.availableICOFund.call();
           const stakeBalance = await exo.stakeOf.call(recipient);
-          assert(ownerBalance.eq(expectedOwnerBalance), 'The remaining owner\'s balance should be 10 tokens less');
+          assert(availableICOFund.eq(expectedICOFund), 'The remaining ICO fund should be 10 tokens less');
           assert(stakeBalance.eq(expectedStakeBalance), 'The recipient\'s stake balance should be 10 tokens more');
+          assert(await exo.airdropped(recipient) == true, 'The recipient should be marked as airdropped');
         });
     })
   });
@@ -50,62 +83,91 @@ contract('EXOToken', accounts => {
     return EXOToken.deployed().then(async exo => {
       const airdropCarrier = accounts[2];
       const recipient = accounts[5];
-      const expectedOwnerBalance = await exo.balanceOf.call(accounts[0]);
+      const expectedICOFund = await exo.availableICOFund.call();
       const expectedStakeBalance = await exo.stakeOf.call(recipient);
 
       await exo.setAirdropCarrier(airdropCarrier);
+      await exo.startPreSale();
+      await helpers.increaseTime(parseInt(PRESALE_DURATION.valueOf()));
+      console.log(parseInt(PRESALE_DURATION.valueOf()));
+      await exo.startICO();
+      await helpers.increaseTime(parseInt(ICO_DURATION.valueOf()));
+      console.log(parseInt(ICO_DURATION.valueOf()));
+
       exo.airdrop(recipient, {from: accounts[3]})
         .then(async result => {
           assert.equal(parseInt(result.receipt.status, 16), 0, 'The airdrop should fail');
 
-          const ownerBalance = await exo.balanceOf.call(accounts[0]);
+          const availableICOFund = await exo.availableICOFund.call();
           const stakeBalance = await exo.stakeOf.call(recipient);
-          assert(ownerBalance.eq(expectedOwnerBalance), 'The remaining owner\'s balance should be unchanged');
+          assert(availableICOFund.eq(expectedICOFund), 'The remaining ICO fund should be unchanged');
           assert(stakeBalance.eq(expectedStakeBalance), 'The recipient\'s stake balance should be unchanged');
         });
     });
   });
 
-  it('should fail airdrop if the owner\'s balance is insufficient', () => {
-    return EXOToken.new(50000006, 10, 50000000).then(async exo => {
+  it('should fail airdrop if the available ICO fund is insufficient', () => {
+    return EXOToken.new(
+      TOTAL_SUPPLY,
+      LOCKED_TREASURY_FUND,
+      LOCKED_PRESALE_FUND,
+      PRESALE_ETH_TO_EXO,
+      PRESALE_DURATION,
+      AIRDROP_AMOUNT.sub(new BN(1)),
+      MIN_ICO_TOKENS_BOUGHT_EVERY_PURCHASE,
+      MAX_ICO_TOKENS_BOUGHT,
+      ICO_ETH_TO_EXO,
+      ICO_DURATION,
+      AIRDROP_AMOUNT
+    ).then(async exo => {
       const airdropCarrier = accounts[2];
       const recipient = accounts[6];
-      const expectedOwnerBalance = await exo.balanceOf.call(accounts[0]);
+      const expectedICOFund = await exo.availableICOFund.call();
       const expectedStakeBalance = await exo.stakeOf.call(recipient);
 
       await exo.setAirdropCarrier(airdropCarrier);
+      await exo.startPreSale();
+      await helpers.increaseTime(PRESALE_DURATION);
+      await exo.startICO();
+      await helpers.increaseTime(ICO_DURATION);
+
       exo.airdrop(recipient, {from: airdropCarrier})
         .then(async result => {
           assert.equal(parseInt(result.receipt.status, 16), 0, 'The airdrop should fail');
 
-          const ownerBalance = await exo.balanceOf.call(accounts[0]);
+          const availableICOFund = await exo.availableICOFund.call();
           const stakeBalance = await exo.stakeOf.call(recipient);
-          assert(ownerBalance.eq(expectedOwnerBalance), 'The remaining owner\'s balance should be unchanged');
+          assert(availableICOFund.eq(expectedICOFund), 'The remaining ICO fund should be unchanged');
           assert(stakeBalance.eq(expectedStakeBalance), 'The recipient\'s stake balance should be unchanged');
         });
     });
   });
 
   it('should reject airdrops designated to the same account more than once', () => {
-    return EXOToken.new(100000000, 10, 50000000).then(async exo => {
+    return EXOToken.deployed().then(async exo => {
       const airdropCarrier = accounts[2];
-      const recipient = accounts[4];
+      const recipient = accounts[5];
 
       await exo.setAirdropCarrier(airdropCarrier);
+      await exo.startPreSale();
+      await helpers.increaseTime(PRESALE_DURATION);
+      await exo.startICO();
+      await helpers.increaseTime(ICO_DURATION);
+
       await exo.airdrop(recipient, {from: airdropCarrier});
       const airdropped = await exo.airdropped.call(recipient);
-      assert(airdropped, 'The account designated should already be airdropped');
+      assert(airdropped, 'The account designated should already be marked as airdropped');
 
-      const expectedOwnerBalance = await exo.balanceOf.call(accounts[0]);
+      const expectedICOFund = await exo.availableICOFund.call();
       const expectedStakeBalance = await exo.stakeOf.call(recipient);
 
       exo.airdrop(recipient, {from: airdropCarrier})
         .then(async result => {
           assert.equal(parseInt(result.receipt.status, 16), 0, 'The airdrop should fail');
 
-          const ownerBalance = await exo.balanceOf.call(accounts[0]);
+          const availableICOFund = await exo.availableICOFund.call();
           const stakeBalance = await exo.stakeOf.call(recipient);
-          assert(ownerBalance.eq(expectedOwnerBalance), 'The remaining owner\'s balance should be unchanged');
+          assert(availableICOFund.eq(expectedICOFund), 'The remaining ICO fund should be unchanged');
           assert(stakeBalance.eq(expectedStakeBalance), 'The recipient\'s stake balance should be unchanged');
         });
     });
@@ -119,6 +181,11 @@ contract('EXOToken', accounts => {
       const deposit = (new BN(50)).mul(exp);
       const expectedBalance = (await exo.balanceOf.call(account)).sub(deposit);
       const expectedStakeBalance = (await exo.stakeOf.call(account)).add(deposit);
+
+      await exo.startPreSale();
+      await helpers.increaseTime(PRESALE_DURATION);
+      await exo.startICO();
+      await helpers.increaseTime(ICO_DURATION);
 
       exo.depositStake(50*exp, {from: account})
         .then(async result => {
@@ -145,6 +212,11 @@ contract('EXOToken', accounts => {
       const withdrawal = (new BN(20)).mul(exp);
       const expectedBalance = (await exo.balanceOf.call(account)).add(withdrawal);
       const expectedStakeBalance = (await exo.stakeOf.call(account)).sub(withdrawal);
+
+      await exo.startPreSale();
+      await helpers.increaseTime(PRESALE_DURATION);
+      await exo.startICO();
+      await helpers.increaseTime(ICO_DURATION);
 
       exo.withdrawStake(20*exp, {from: account})
         .then(async result => {
