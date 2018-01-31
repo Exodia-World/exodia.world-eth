@@ -1,5 +1,4 @@
 const BN = require('bn.js');
-const expectThrow = require('./helpers/expectThrow');
 const EXOToken = artifacts.require('EXOToken');
 const exp = (new BN(10)).pow(new BN(18));
 
