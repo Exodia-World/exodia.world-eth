@@ -191,6 +191,7 @@ contract EXOToken is StandardToken, Ownable {
      * @param _value The amount of EXO to deposit
      */
     function depositStake(uint256 _value) public returns (bool) {
+        require(ICOStartTime > 0 && ICODeadline < now); // ICO must have ended first
         require(balances[msg.sender] >= _value);
 
         uint256 totalBalanceBeforeDeposit = balances[msg.sender].add(stakes[msg.sender].balance);
@@ -212,6 +213,7 @@ contract EXOToken is StandardToken, Ownable {
      * @param _value The amount of EXO to withdraw
      */
     function withdrawStake(uint256 _value) public returns (bool) {
+        require(ICOStartTime > 0 && ICODeadline < now); // ICO must have ended first
         require(stakes[msg.sender].balance >= _value);
 
         uint256 totalBalanceBeforeWithdrawal = balances[msg.sender].add(stakes[msg.sender].balance);
@@ -230,6 +232,7 @@ contract EXOToken is StandardToken, Ownable {
      * @dev Update a staker's balance with staking interest.
      */
     function updateStakeBalance() public returns (uint256) {
+        require(ICOStartTime > 0 && ICODeadline < now); // ICO must have ended first
         uint256 interest = calculateInterest();
         require(balances[owner] >= interest);
 
@@ -250,9 +253,10 @@ contract EXOToken is StandardToken, Ownable {
      * For example, staking of 5 EXO for 16 days would yield 5 EXO * 0.0273% (rate per day) * 14 (days).
      */
     function calculateInterest() public view returns (uint256) {
+        require(ICOStartTime > 0 && ICODeadline < now); // ICO must have ended first
+
         if (stakes[msg.sender].balance == 0 || stakes[msg.sender].startTime == 0) { return 0; }
-        require(stakes[msg.sender].startTime >= tokenCreationTime);
-        require(stakes[msg.sender].startTime <= now);
+        require(stakes[msg.sender].startTime >= tokenCreationTime && stakes[msg.sender].startTime <= now);
 
         uint256 totalInterest = 0;
 
