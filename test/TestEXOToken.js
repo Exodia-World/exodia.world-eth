@@ -16,6 +16,20 @@ const ICO_DURATION = new BN(2419200);
 const AIRDROP_AMOUNT = (new BN(10)).mul(exp);
 
 contract('EXOToken', accounts => {
+  const treasuryCarrier = accounts[1];
+  const preSaleCarrier = accounts[2];
+  const airdropCarrier = accounts[3];
+
+  const fastForwardToAfterICO = async exo => {
+    await exo.setPreSaleCarrier(preSaleCarrier);
+
+    // Fast forward to after ICO.
+    await exo.startPreSale();
+    await helpers.increaseTime(parseInt(PRESALE_DURATION.add(new BN(1)).valueOf()));
+    await exo.startICO();
+    await helpers.increaseTime(parseInt(ICO_DURATION.add(new BN(1)).valueOf()));
+  };
+
   it('should have the correct parameters as deployed', () => {
     return EXOToken.deployed().then(async exo => {
       const totalSupply = await exo.totalSupply.call();
@@ -46,17 +60,13 @@ contract('EXOToken', accounts => {
 
   it('should airdrop to a recipient with a specific amount of tokens', () => {
     return EXOToken.deployed().then(async exo => {
-      const airdropCarrier = accounts[2];
       const recipient = accounts[4];
       const airdropAmount = await exo.airdropAmount.call();
       const expectedICOFund = (await exo.availableICOFund.call()).sub(airdropAmount);
       const expectedStakeBalance = (await exo.stakeOf.call(recipient)).add(airdropAmount);
 
       await exo.setAirdropCarrier(airdropCarrier);
-      await exo.startPreSale();
-      await helpers.increaseTime(PRESALE_DURATION);
-      // await exo.startICO();
-      // await helpers.increaseTime(ICO_DURATION);
+      await fastForwardToAfterICO(exo);
 
       exo.airdrop(recipient, {from: airdropCarrier})
         .then(async result => {
@@ -81,20 +91,14 @@ contract('EXOToken', accounts => {
 
   it('should reject airdrops from non-carrier accounts', () => {
     return EXOToken.deployed().then(async exo => {
-      const airdropCarrier = accounts[2];
       const recipient = accounts[5];
       const expectedICOFund = await exo.availableICOFund.call();
       const expectedStakeBalance = await exo.stakeOf.call(recipient);
 
       await exo.setAirdropCarrier(airdropCarrier);
-      await exo.startPreSale();
-      await helpers.increaseTime(parseInt(PRESALE_DURATION.valueOf()));
-      console.log(parseInt(PRESALE_DURATION.valueOf()));
-      await exo.startICO();
-      await helpers.increaseTime(parseInt(ICO_DURATION.valueOf()));
-      console.log(parseInt(ICO_DURATION.valueOf()));
+      await fastForwardToAfterICO(exo);
 
-      exo.airdrop(recipient, {from: accounts[3]})
+      exo.airdrop(recipient, {from: treasuryCarrier})
         .then(async result => {
           assert.equal(parseInt(result.receipt.status, 16), 0, 'The airdrop should fail');
 
@@ -120,16 +124,12 @@ contract('EXOToken', accounts => {
       ICO_DURATION,
       AIRDROP_AMOUNT
     ).then(async exo => {
-      const airdropCarrier = accounts[2];
       const recipient = accounts[6];
       const expectedICOFund = await exo.availableICOFund.call();
       const expectedStakeBalance = await exo.stakeOf.call(recipient);
 
       await exo.setAirdropCarrier(airdropCarrier);
-      await exo.startPreSale();
-      await helpers.increaseTime(PRESALE_DURATION);
-      await exo.startICO();
-      await helpers.increaseTime(ICO_DURATION);
+      await fastForwardToAfterICO(exo);
 
       exo.airdrop(recipient, {from: airdropCarrier})
         .then(async result => {
@@ -149,10 +149,7 @@ contract('EXOToken', accounts => {
       const recipient = accounts[5];
 
       await exo.setAirdropCarrier(airdropCarrier);
-      await exo.startPreSale();
-      await helpers.increaseTime(PRESALE_DURATION);
-      await exo.startICO();
-      await helpers.increaseTime(ICO_DURATION);
+      await fastForwardToAfterICO(exo);
 
       await exo.airdrop(recipient, {from: airdropCarrier});
       const airdropped = await exo.airdropped.call(recipient);
@@ -182,10 +179,7 @@ contract('EXOToken', accounts => {
       const expectedBalance = (await exo.balanceOf.call(account)).sub(deposit);
       const expectedStakeBalance = (await exo.stakeOf.call(account)).add(deposit);
 
-      await exo.startPreSale();
-      await helpers.increaseTime(PRESALE_DURATION);
-      await exo.startICO();
-      await helpers.increaseTime(ICO_DURATION);
+      await fastForwardToAfterICO(exo);
 
       exo.depositStake(50*exp, {from: account})
         .then(async result => {
@@ -213,10 +207,7 @@ contract('EXOToken', accounts => {
       const expectedBalance = (await exo.balanceOf.call(account)).add(withdrawal);
       const expectedStakeBalance = (await exo.stakeOf.call(account)).sub(withdrawal);
 
-      await exo.startPreSale();
-      await helpers.increaseTime(PRESALE_DURATION);
-      await exo.startICO();
-      await helpers.increaseTime(ICO_DURATION);
+      await fastForwardToAfterICO(exo);
 
       exo.withdrawStake(20*exp, {from: account})
         .then(async result => {
