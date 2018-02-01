@@ -118,6 +118,13 @@ contract EXOToken is StandardToken, Ownable {
     }
 
     /**
+     * @dev Don't accept any ETH without specific functions being called.
+     */
+    function () public payable {
+        revert();
+    }
+
+    /**
      * @dev Start the pre-sale.
      */
     function startPreSale() public onlyOwner returns (bool) {

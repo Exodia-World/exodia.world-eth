@@ -58,6 +58,37 @@ contract('EXOToken', accounts => {
     });
   });
 
+  it('should start the pre-sale', () => {});
+  it('should NOT start the pre-sale if the locked fund is 0', () => {});
+  it('should NOT start the pre-sale if no carrier is set', () => {});
+  it('should NOT start the pre-sale if it has already been started before', () => {});
+  it('should NOT start the pre-sale if called by non-carrier accounts', () => {});
+  it('should NOT start the pre-sale if ICO has been started', () => {});
+  it('should end the pre-sale', () => {});
+  it('should NOT end the pre-sale if it has NOT been started', () => {});
+  it('should NOT end the pre-sale if its deadline has NOT passed', () => {});
+  it('should NOT end the pre-sale if it has already been ended', () => {});
+
+  it('should sell EXO tokens at ICO for an amount of ETH', () => {});
+  it('should NOT sell EXO tokens at ICO for ETH less than the minimum amount set per purchase', () => {});
+  it('should NOT sell EXO tokens at ICO for ETH more than the maximum amount set for all purchases', () => {});
+  it('should NOT sell EXO tokens at ICO if its tokens are insufficient', () => {});
+  it('should NOT sell EXO tokens at ICO if ICO has NOT been started', () => {});
+  it('should NOT sell EXO tokens at ICO if its deadline has passed', () => {});
+  it('should start the ICO', () => {});
+  it('should NOT start the ICO if the pre-sale has NOT been started', () => {});
+  it('should NOT start the ICO if the pre-sale has NOT been ended', () => {});
+  it('should NOT start the ICO if it has already been started before', () => {});
+  it('should NOT start the ICO if there is no available fund', () => {});
+  it('should end the ICO', () => {});
+  it('should NOT end the ICO if it has NOT been started', () => {});
+  it('should NOT end the ICO if its deadline has not passed', () => {});
+  it('should NOT end the ICO if it has already been ended', () => {});
+  it('should release the ICO fund to owner', () => {});
+  it('should NOT release the ICO fund to owner if ICO has NOT been started', () => {});
+  it('should NOT release the ICO fund to owner if ICO has NOT been ended', () => {});
+  it('should NOT release the ICO fund to owner if there is no fund to release', () => {});
+
   it('should airdrop to a recipient with a specific amount of tokens', () => {
     return EXOToken.deployed().then(async exo => {
       const recipient = accounts[4];
@@ -106,6 +137,7 @@ contract('EXOToken', accounts => {
           const stakeBalance = await exo.stakeOf.call(recipient);
           assert(availableICOFund.eq(expectedICOFund), 'The remaining ICO fund should be unchanged');
           assert(stakeBalance.eq(expectedStakeBalance), 'The recipient\'s stake balance should be unchanged');
+          assert(await exo.airdropped(recipient) == false, 'The recipient should NOT be marked as airdropped');
         });
     });
   });
@@ -139,6 +171,7 @@ contract('EXOToken', accounts => {
           const stakeBalance = await exo.stakeOf.call(recipient);
           assert(availableICOFund.eq(expectedICOFund), 'The remaining ICO fund should be unchanged');
           assert(stakeBalance.eq(expectedStakeBalance), 'The recipient\'s stake balance should be unchanged');
+          assert(await exo.airdropped(recipient) == false, 'The recipient should NOT be marked as airdropped');
         });
     });
   });
@@ -200,6 +233,12 @@ contract('EXOToken', accounts => {
     });
   });
 
+  it('should deposit stake with interest applied to current stake', () => {});
+  it('should NOT deposit stake if balance is insufficient', () => {});
+  it('should NOT deposit stake if deposit value is NOT more than ZERO', () => {});
+  it('should NOT deposit stake if ICO has NOT ended', () => {});
+  it('should deposit stake with ZERO interest applied if the staking is NOT at least for 7 days since last start time', () => {});
+
   it('should withdraw stake with no interest applied', () => {
     return EXOToken.deployed().then(async exo => {
       const account = accounts[5];
@@ -227,4 +266,16 @@ contract('EXOToken', accounts => {
         });
     });
   });
+
+  it('should withdraw stake with interest applied to current stake', () => {});
+  it('should NOT withdraw stake if stake balance is insufficient', () => {});
+  it('should NOT withdraw stake if withdrawal value is NOT more than ZERO', () => {});
+  it('should NOT withdraw stake if ICO has NOT ended', () => {});
+  it('should withdraw stake with ZERO interest applied if the staking is NOT at least for 7 days since last start time', () => {});
+
+  it('should update stake balance with interest', () => {});
+  it('should NOT update stake balance with interest if ICO has NOT ended', () => {});
+  it('should NOT update stake balance with interest if owner\'s balance is insufficient', () => {});
+  it('should update stake balance with ZERO interest if there is no stake balance', () => {});
+  it('should update stake balance with ZERO interest if the staking is NOT at least 7 days since last start time', () => {});
 });
