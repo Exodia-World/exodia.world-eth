@@ -77,41 +77,111 @@ contract('EXOToken', accounts => {
     });
   });
 
-  it('should start the pre-sale', () => {});
-  it('should NOT start the pre-sale if the locked fund is 0', () => {});
-  it('should NOT start the pre-sale if no carrier is set', () => {});
-  it('should NOT start the pre-sale if it has already been started before', () => {});
-  it('should NOT start the pre-sale if called by non-carrier accounts', () => {});
-  it('should NOT start the pre-sale if ICO has been started', () => {});
-  it('should NOT start the pre-sale if caller is NOT owner', () => {});
-  it('should end the pre-sale', () => {});
-  it('should NOT end the pre-sale if it has NOT been started', () => {});
-  it('should NOT end the pre-sale if its deadline has NOT passed', () => {});
-  it('should NOT end the pre-sale if it has already been ended', () => {});
-  it('should NOT end the pre-sale if caller is NOT owner', () => {});
+  it('should start the pre-sale', () => {
+    return newEXOToken().then(async exo => {
+      const preSaleDuration = await exo.preSaleDuration.call();
+      await exo.setPreSaleCarrier(preSaleCarrier);
 
-  it('should sell EXO tokens at ICO for an amount of ETH', () => {});
-  it('should NOT sell EXO tokens at ICO for ETH less than the minimum amount set per purchase', () => {});
-  it('should NOT sell EXO tokens at ICO for ETH more than the maximum amount set for all purchases', () => {});
-  it('should NOT sell EXO tokens at ICO if its tokens are insufficient', () => {});
-  it('should NOT sell EXO tokens at ICO if ICO has NOT been started', () => {});
-  it('should NOT sell EXO tokens at ICO if its deadline has passed', () => {});
-  it('should start the ICO', () => {});
-  it('should NOT start the ICO if the pre-sale has NOT been started', () => {});
-  it('should NOT start the ICO if the pre-sale has NOT been ended', () => {});
-  it('should NOT start the ICO if it has already been started before', () => {});
-  it('should NOT start the ICO if there is no available fund', () => {});
-  it('should NOT start the ICO if caller is NOT owner', () => {});
-  it('should end the ICO', () => {});
-  it('should NOT end the ICO if it has NOT been started', () => {});
-  it('should NOT end the ICO if its deadline has not passed', () => {});
-  it('should NOT end the ICO if it has already been ended', () => {});
-  it('should NOT end the ICO if caller is NOT owner', () => {});
-  it('should release the ICO fund to owner', () => {});
-  it('should NOT release the ICO fund to owner if ICO has NOT been started', () => {});
-  it('should NOT release the ICO fund to owner if ICO has NOT been ended', () => {});
-  it('should NOT release the ICO fund to owner if there is no fund to release', () => {});
-  it('should NOT release the ICO fund to owner if caller is NOT owner', () => {});
+      exo.startPreSale().then(async result => {
+        assert.equal(parseInt(result.receipt.status, 16), 1, 'The pre-sale should be started');
+
+        const now = web3.eth.getBlock(web3.eth.blockNumber).timestamp;
+        const startTime = await exo.preSaleStartTime.call();
+        const deadline = await exo.preSaleDeadline.call();
+
+        for (let i = 0; i < result.logs.length; i++) {
+          const log = result.logs[i];
+          if (log.event === 'StartPreSale') {
+            assert(log.args.startTime.eq(new BN(now)), 'The published start time should be equal to current block time');
+            assert(log.args.deadline.sub(log.args.startTime).eq(preSaleDuration), 'The published start time and deadline of pre-sale should be correct');
+          }
+        }
+        assert(startTime.eq(new BN(now)), 'The start time should be equal to current block time');
+        assert(deadline.sub(startTime).eq(preSaleDuration), 'The start time and deadline of pre-sale should be correct');
+      });
+    });
+  });
+
+  it('should NOT start the pre-sale if the locked fund is 0', () => {
+    return newEXOToken({lockedPreSaleFund: 0}).then(async exo => {
+      await exo.setPreSaleCarrier(preSaleCarrier);
+
+      exo.startPreSale().then(async result => {
+        assert.equal(parseInt(result.receipt.status, 16), 0, 'The pre-sale should NOT be started');
+
+        const startTime = await exo.preSaleStartTime.call();
+        const deadline = await exo.preSaleDeadline.call();
+
+        assert(startTime.eq(new BN(0)), 'The start time should be equal to 0');
+        assert(deadline.eq(new BN(0)), 'The deadline should be equal to 0');
+      });
+    });
+  });
+
+  it('should NOT start the pre-sale if no carrier is set', () => {
+    return newEXOToken().then(async exo => {
+      exo.startPreSale().then(async result => {
+        assert.equal(parseInt(result.receipt.status, 16), 0, 'The pre-sale should NOT be started');
+
+        const startTime = await exo.preSaleStartTime.call();
+        const deadline = await exo.preSaleDeadline.call();
+
+        assert(startTime.eq(new BN(0)), 'The start time should be equal to 0');
+        assert(deadline.eq(new BN(0)), 'The deadline should be equal to 0');
+      });
+    });
+  });
+
+  it('should NOT start the pre-sale if it has already been started before', () => {
+    return newEXOToken().then(async exo => {
+      await exo.setPreSaleCarrier(preSaleCarrier);
+      await exo.startPreSale();
+
+      const expectedStartTime = await exo.preSaleStartTime.call();
+      const expectedDeadline = await exo.preSaleDeadline.call();
+
+      exo.startPreSale().then(async result => {
+        assert.equal(parseInt(result.receipt.status, 16), 0, 'The pre-sale should NOT be started');
+
+        const startTime = await exo.preSaleStartTime.call();
+        const deadline = await exo.preSaleDeadline.call();
+
+        assert(startTime.eq(expectedStartTime), 'The start time should be unchanged');
+        assert(deadline.eq(expectedDeadline), 'The deadline should be unchanged');
+      });
+    });
+  });
+
+  // it('should NOT start the pre-sale if ICO has been started', () => {});
+  // it('should NOT start the pre-sale if caller is NOT owner', () => {});
+  // it('should end the pre-sale', () => {});
+  // it('should NOT end the pre-sale if it has NOT been started', () => {});
+  // it('should NOT end the pre-sale if its deadline has NOT passed', () => {});
+  // it('should NOT end the pre-sale if it has already been ended', () => {});
+  // it('should NOT end the pre-sale if caller is NOT owner', () => {});
+
+  // it('should sell EXO tokens at ICO for an amount of ETH', () => {});
+  // it('should NOT sell EXO tokens at ICO for ETH less than the minimum amount set per purchase', () => {});
+  // it('should NOT sell EXO tokens at ICO for ETH more than the maximum amount set for all purchases', () => {});
+  // it('should NOT sell EXO tokens at ICO if its tokens are insufficient', () => {});
+  // it('should NOT sell EXO tokens at ICO if ICO has NOT been started', () => {});
+  // it('should NOT sell EXO tokens at ICO if its deadline has passed', () => {});
+  // it('should start the ICO', () => {});
+  // it('should NOT start the ICO if the pre-sale has NOT been started', () => {});
+  // it('should NOT start the ICO if the pre-sale has NOT been ended', () => {});
+  // it('should NOT start the ICO if it has already been started before', () => {});
+  // it('should NOT start the ICO if there is no available fund', () => {});
+  // it('should NOT start the ICO if caller is NOT owner', () => {});
+  // it('should end the ICO', () => {});
+  // it('should NOT end the ICO if it has NOT been started', () => {});
+  // it('should NOT end the ICO if its deadline has not passed', () => {});
+  // it('should NOT end the ICO if it has already been ended', () => {});
+  // it('should NOT end the ICO if caller is NOT owner', () => {});
+  // it('should release the ICO fund to owner', () => {});
+  // it('should NOT release the ICO fund to owner if ICO has NOT been started', () => {});
+  // it('should NOT release the ICO fund to owner if ICO has NOT been ended', () => {});
+  // it('should NOT release the ICO fund to owner if there is no fund to release', () => {});
+  // it('should NOT release the ICO fund to owner if caller is NOT owner', () => {});
 
   it('should airdrop to a recipient with a specific amount of tokens', () => {
     return newEXOToken().then(async exo => {
@@ -132,7 +202,7 @@ contract('EXOToken', accounts => {
             if (log.event === 'Transfer') {
               assert.equal(log.args.from, airdropCarrier, 'The airdrop should be transferred from carrier');
               assert.equal(log.args.to, recipient, 'The airdrop should be transferred to recipient');
-              assert(airdropAmount.div(exp).eq(new BN(log.args.value/exp)), 'The airdrop value should be as configured');
+              assert(airdropAmount.eq(log.args.value), 'The airdrop value should be as configured');
             }
           }
           const availableICOFund = await exo.availableICOFund.call();
@@ -236,7 +306,7 @@ contract('EXOToken', accounts => {
             const log = result.logs[i];
             if (log.event === 'DepositStake') {
               assert.equal(log.args.staker, account, 'The stake should be deposited by staker');
-              assert((new BN(log.args.value/exp)).eq(new BN(50)), 'The stake value should be 50 tokens');
+              assert(log.args.value.div(exp).eq(new BN(50)), 'The stake value should be 50 tokens');
             }
           }
           const balance = await exo.balanceOf.call(account);
@@ -247,11 +317,11 @@ contract('EXOToken', accounts => {
     });
   });
 
-  it('should deposit stake with interest applied to current stake', () => {});
-  it('should NOT deposit stake if balance is insufficient', () => {});
-  it('should NOT deposit stake if deposit value is NOT more than ZERO', () => {});
-  it('should NOT deposit stake if ICO has NOT ended', () => {});
-  it('should NOT deposit stake if caller is owner', () => {});
+  // it('should deposit stake with interest applied to current stake', () => {});
+  // it('should NOT deposit stake if balance is insufficient', () => {});
+  // it('should NOT deposit stake if deposit value is NOT more than ZERO', () => {});
+  // it('should NOT deposit stake if ICO has NOT ended', () => {});
+  // it('should NOT deposit stake if caller is owner', () => {});
 
   it('should withdraw stake with ZERO interest applied if the staking is NOT for at least 7 days since last start time', () => {
     return newEXOToken().then(async exo => {
@@ -272,7 +342,7 @@ contract('EXOToken', accounts => {
             const log = result.logs[i];
             if (log.event === 'WithdrawStake') {
               assert.equal(log.args.staker, account, 'The stake should be withdrawn by staker');
-              assert((new BN(log.args.value/exp)).eq(new BN(20)), 'The stake value should be 20 tokens');
+              assert(log.args.value.div(exp).eq(new BN(20)), 'The stake value should be 20 tokens');
             }
           }
           const balance = await exo.balanceOf.call(account);
@@ -283,58 +353,62 @@ contract('EXOToken', accounts => {
     });
   });
 
-  it('should withdraw stake with interest applied to current stake', () => {});
-  it('should NOT withdraw stake if stake balance is insufficient', () => {});
-  it('should NOT withdraw stake if withdrawal value is NOT more than ZERO', () => {});
-  it('should NOT withdraw stake if ICO has NOT ended', () => {});
-  it('should NOT withdraw stake if caller is owner', () => {});
+  // it('should withdraw stake with interest applied to current stake', () => {});
+  // it('should NOT withdraw stake if stake balance is insufficient', () => {});
+  // it('should NOT withdraw stake if withdrawal value is NOT more than ZERO', () => {});
+  // it('should NOT withdraw stake if ICO has NOT ended', () => {});
+  // it('should NOT withdraw stake if caller is owner', () => {});
 
-  it('should update stake balance with interest', () => {});
-  it('should NOT update stake balance with interest if ICO has NOT ended', () => {});
-  it('should NOT update stake balance with interest if owner\'s balance is insufficient', () => {});
-  it('should update stake balance with ZERO interest if there is no stake balance', () => {});
-  it('should update stake balance with ZERO interest if the staking is NOT for at least 7 days since last start time', () => {});
-  it('should NOT update stake balance if caller is owner', () => {});
+  // it('should update stake balance with interest', () => {});
+  // it('should NOT update stake balance with interest if ICO has NOT ended', () => {});
+  // it('should NOT update stake balance with interest if owner\'s balance is insufficient', () => {});
+  // it('should update stake balance with ZERO interest if there is no stake balance', () => {});
+  // it('should update stake balance with ZERO interest if the staking is NOT for at least 7 days since last start time', () => {});
+  // it('should NOT update stake balance if caller is owner', () => {});
 
-  it('should calculate interest to be ZERO if staking is NOT for at least 7 days since last start time in first interest period', () => {});
-  it('should calculate interest correctly if staking is for multiple of 7 days since last start time in first interest period', () => {});
-  it('should calculate interest to be ZERO if staking is NOT for at least 7 days since last start time in second interest period', () => {});
-  it('should calculate interest correctly if staking is for multiple of 7 days since last start time in second interest period', () => {});
-  it('should calculate interest correctly if staking ranges from one interest period to the next', () => {});
-  it('should calculate interest to be ZERO if staking is NOT for at least 7 days since last start time in the middle of two interest periods', () => {});
-  it('should calculate interest to be ZERO if there is no stake balance', () => {});
-  it('should calculate interest to be exactly as owner\'s remaining balance if the balance is insufficient', () => {});
-  it('should calculate interest to be ZERO if all interest periods have passed', () => {});
-  it('should NOT calculate interest if caller is owner', () => {});
+  // it('should calculate interest to be ZERO if staking is NOT for at least 7 days since last start time in first interest period', () => {});
+  // it('should calculate interest correctly if staking is for multiple of 7 days since last start time in first interest period', () => {});
+  // it('should calculate interest to be ZERO if staking is NOT for at least 7 days since last start time in second interest period', () => {});
+  // it('should calculate interest correctly if staking is for multiple of 7 days since last start time in second interest period', () => {});
+  // it('should calculate interest correctly if staking ranges from one interest period to the next', () => {});
+  // it('should calculate interest to be ZERO if staking is NOT for at least 7 days since last start time in the middle of two interest periods', () => {});
+  // it('should calculate interest to be ZERO if there is no stake balance', () => {});
+  // it('should calculate interest to be exactly as owner\'s remaining balance if the balance is insufficient', () => {});
+  // it('should calculate interest to be ZERO if all interest periods have passed', () => {});
+  // it('should NOT calculate interest if caller is owner', () => {});
 
-  it('should move locked fund to new carrier\'s account and set the new treasury carrier', () => {});
-  it('should move fund from old carrier\'s account to new carrier\'s account and set the new treasury carrier', () => {});
-  it('should NOT move treasury fund+set carrier if new carrier\'s account has more than ZERO balance', () => {});
-  it('should NOT move treasury fund+set carrier if old carrier\'s account has ZERO balance', () => {});
-  it('should NOT move treasury fund+set carrier if new carrier is the same as old carrier', () => {});
-  it('should NOT move treasury fund+set carrier if new carrier has account address of 0x0', () => {});
-  it('should NOT move treasury fund+set carrier if new carrier has account address of owner', () => {});
-  it('should NOT move treasury fund+set carrier if new carrier has account address of another carrier', () => {});
-  it('should NOT move treasury fund+set carrier if caller is NOT owner', () => {});
+  // it('should move locked fund to new carrier\'s account and set the new treasury carrier', () => {});
+  // it('should move fund from old carrier\'s account to new carrier\'s account and set the new treasury carrier', () => {});
+  // it('should NOT move treasury fund+set carrier if new carrier\'s account has more than ZERO balance', () => {});
+  // it('should NOT move treasury fund+set carrier if old carrier\'s account has ZERO balance', () => {});
+  // it('should NOT move treasury fund+set carrier if new carrier is the same as old carrier', () => {});
+  // it('should NOT move treasury fund+set carrier if new carrier has account address of 0x0', () => {});
+  // it('should NOT move treasury fund+set carrier if new carrier has account address of owner', () => {});
+  // it('should NOT move treasury fund+set carrier if new carrier has account address of another carrier', () => {});
+  // it('should NOT move treasury fund+set carrier if caller is NOT owner', () => {});
 
-  it('should move locked fund to new carrier\'s account and set the new pre-sale carrier', () => {});
-  it('should move fund from old carrier\'s account to new carrier\'s account and set the new pre-sale carrier', () => {});
-  it('should NOT move pre-sale fund+set carrier if new carrier\'s account has more than ZERO balance', () => {});
-  it('should NOT move pre-sale fund+set carrier if old carrier\'s account has ZERO balance', () => {});
-  it('should NOT move pre-sale fund+set carrier if new carrier is the same as old carrier', () => {});
-  it('should NOT move pre-sale fund+set carrier if new carrier has account address of 0x0', () => {});
-  it('should NOT move pre-sale fund+set carrier if new carrier has account address of owner', () => {});
-  it('should NOT move pre-sale fund+set carrier if new carrier has account address of another carrier', () => {});
-  it('should NOT move pre-sale fund+set carrier if caller is NOT owner', () => {});
-  it('should NOT move pre-sale fund+set carrier if pre-sale has ended', () => {});
+  // it('should move locked fund to new carrier\'s account and set the new pre-sale carrier', () => {});
+  // it('should move fund from old carrier\'s account to new carrier\'s account and set the new pre-sale carrier', () => {});
+  // it('should NOT move pre-sale fund+set carrier if new carrier\'s account has more than ZERO balance', () => {});
+  // it('should NOT move pre-sale fund+set carrier if old carrier\'s account has ZERO balance', () => {});
+  // it('should NOT move pre-sale fund+set carrier if new carrier is the same as old carrier', () => {});
+  // it('should NOT move pre-sale fund+set carrier if new carrier has account address of 0x0', () => {});
+  // it('should NOT move pre-sale fund+set carrier if new carrier has account address of owner', () => {});
+  // it('should NOT move pre-sale fund+set carrier if new carrier has account address of another carrier', () => {});
+  // it('should NOT move pre-sale fund+set carrier if caller is NOT owner', () => {});
+  // it('should NOT move pre-sale fund+set carrier if pre-sale has ended', () => {});
 
-  it('should set airdrop carrier', () => {});
-  it('should NOT set airdrop carrier if new carrier has account address of owner', () => {});
-  it('should NOT set airdrop carrier if new carrier is the same as old carrier', () => {});
-  it('should NOT set airdrop carrier if new carrier has account address of another carrier', () => {});
-  it('should NOT set airdrop carrier if caller is NOT owner', () => {});
+  // it('should set airdrop carrier', () => {});
+  // it('should NOT set airdrop carrier if new carrier has account address of owner', () => {});
+  // it('should NOT set airdrop carrier if new carrier is the same as old carrier', () => {});
+  // it('should NOT set airdrop carrier if new carrier has account address of another carrier', () => {});
+  // it('should NOT set airdrop carrier if caller is NOT owner', () => {});
 
-  it('should get the stake balance of an account', () => {});
+  // it('should get the stake balance of an account', () => {});
 
-  it('should NOT transfer anything to owner account', () => {});
+  // it('should NOT transfer anything to owner account', () => {});
+
+  // // TO BE CONSIDERED
+  // it('should freeze an account requested by owner', () => {});
+  // it('should apply a transfer cap to any account requested by owner', () => {});
 });
