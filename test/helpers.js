@@ -19,7 +19,7 @@ const increaseTime = (duration) => {
       });
     });
   });
-}
+};
 
 module.exports = {
   increaseTime

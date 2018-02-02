@@ -1,6 +1,7 @@
 const BN = require('bn.js');
 const EXOToken = artifacts.require('EXOToken');
 const helpers = require('./helpers');
+const toBN = helpers.toBN;
 const exp = (new BN(10)).pow(new BN(18));
 
 const TOTAL_SUPPLY = (new BN(100000000)).mul(exp);
@@ -39,14 +40,16 @@ contract('EXOToken', accounts => {
   const preSaleCarrier = accounts[2];
   const airdropCarrier = accounts[3];
 
-  const fastForwardToAfterICO = async exo => {
+  const fastForwardToAfterPreSale = async exo => {
     await exo.setPreSaleCarrier(preSaleCarrier);
-
-    // Fast forward to after ICO.
     await exo.startPreSale();
-    await helpers.increaseTime(PRESALE_DURATION.add(new BN(1)).toNumber());
+    await helpers.increaseTime(PRESALE_DURATION.toNumber() + 1);
+  };
+
+  const fastForwardToAfterICO = async exo => {
+    await fastForwardToAfterPreSale(exo);
     await exo.startICO();
-    await helpers.increaseTime(ICO_DURATION.add(new BN(1)).toNumber());
+    await helpers.increaseTime(ICO_DURATION.toNumber() + 1);
   };
 
   it('should have the correct parameters as deployed', () => {
@@ -92,6 +95,10 @@ contract('EXOToken', accounts => {
         for (let i = 0; i < result.logs.length; i++) {
           const log = result.logs[i];
           if (log.event === 'StartPreSale') {
+            // NOTE: Sometimes the block timestamp isn't as expected, but it's a test-specific issue.
+            if (! log.args.startTime.eq(new BN(now))) {
+              console.log('BLOCK TIMESTAMP INCONSISTENCY', log.args.startTime.valueOf(), now);
+            }
             assert(log.args.startTime.eq(new BN(now)), 'The published start time should be equal to current block time');
             assert(log.args.deadline.sub(log.args.startTime).eq(preSaleDuration), 'The published start time and deadline of pre-sale should be correct');
           }
@@ -152,17 +159,193 @@ contract('EXOToken', accounts => {
     });
   });
 
-  // it('should NOT start the pre-sale if ICO has been started', () => {});
-  // it('should NOT start the pre-sale if caller is NOT owner', () => {});
-  // it('should end the pre-sale', () => {});
-  // it('should NOT end the pre-sale if it has NOT been started', () => {});
-  // it('should NOT end the pre-sale if its deadline has NOT passed', () => {});
-  // it('should NOT end the pre-sale if it has already been ended', () => {});
-  // it('should NOT end the pre-sale if caller is NOT owner', () => {});
+  it('should NOT start the pre-sale if caller is NOT owner', () => {
+    return newEXOToken().then(async exo => {
+      await exo.setPreSaleCarrier(preSaleCarrier);
 
-  // it('should sell EXO tokens at ICO for an amount of ETH', () => {});
-  // it('should NOT sell EXO tokens at ICO for ETH less than the minimum amount set per purchase', () => {});
-  // it('should NOT sell EXO tokens at ICO for ETH more than the maximum amount set for all purchases', () => {});
+      exo.startPreSale({from: accounts[3]}).then(async result => {
+        assert.equal(parseInt(result.receipt.status, 16), 0, 'The pre-sale should NOT be started');
+
+        const startTime = await exo.preSaleStartTime.call();
+        const deadline = await exo.preSaleDeadline.call();
+
+        assert(startTime.eq(new BN(0)), 'The start time should be equal to 0');
+        assert(deadline.eq(new BN(0)), 'The deadline should be equal to 0');
+      });
+    });
+  });
+
+  it('should end the pre-sale', () => {
+    return newEXOToken().then(async exo => {
+      await exo.setPreSaleCarrier(preSaleCarrier);
+      const remainingPreSaleFund = await exo.balanceOf(preSaleCarrier);
+      await exo.startPreSale();
+
+      const preSaleDuration = await exo.preSaleDuration.call();
+      await helpers.increaseTime(preSaleDuration.toNumber() + 1);
+
+      exo.endPreSale().then(async result => {
+        assert.equal(parseInt(result.receipt.status, 16), 1, 'The pre-sale should be ended');
+
+        for (let i = 0; i < result.logs.length; i++) {
+          const log = result.logs[i];
+          if (log.event === 'EndPreSale') {
+            assert(log.args.deadline.sub(log.args.startTime).eq(preSaleDuration), 'The published start time and deadline should be correct');
+            assert(log.args.remainingPreSaleFund.eq(remainingPreSaleFund), 'The published remaining pre-sale fund should be correct');
+          }
+        }
+      });
+    });
+  });
+
+  it('should NOT end the pre-sale if it has NOT been started', () => {
+    return newEXOToken().then(async exo => {
+      await exo.setPreSaleCarrier(preSaleCarrier);
+      
+      exo.endPreSale().then(async result => {
+        assert.equal(parseInt(result.receipt.status, 16), 0, 'The pre-sale should NOT be ended');
+
+        const startTime = await exo.preSaleStartTime.call();
+        const deadline = await exo.preSaleDeadline.call();
+
+        assert(startTime.eq(new BN(0)), 'The start time should be equal to 0');
+        assert(deadline.eq(new BN(0)), 'The deadline should be equal to 0');
+      });
+    });
+  });
+
+  it('should NOT end the pre-sale if its deadline has NOT passed', () => {
+    return newEXOToken().then(async exo => {
+      await exo.setPreSaleCarrier(preSaleCarrier);
+      await exo.startPreSale();
+      
+      exo.endPreSale().then(async result => {
+        assert.equal(parseInt(result.receipt.status, 16), 0, 'The pre-sale should NOT be ended');
+      });
+    });
+  });
+
+  it('should NOT end the pre-sale if it has already been ended', () => {
+    return newEXOToken().then(async exo => {
+      await fastForwardToAfterPreSale(exo);
+      await exo.endPreSale();
+
+      exo.endPreSale().then(async result => {
+        assert.equal(parseInt(result.receipt.status, 16), 0, 'The pre-sale should NOT be ended');
+      });
+    });
+  });
+
+  it('should NOT end the pre-sale if caller is NOT owner', () => {
+    return newEXOToken().then(async exo => {
+      await fastForwardToAfterPreSale(exo);
+
+      exo.endPreSale({from: accounts[4]}).then(async result => {
+        assert.equal(parseInt(result.receipt.status, 16), 0, 'The pre-sale should NOT be ended');
+      });
+    });
+  });
+
+  it('should sell EXO tokens at ICO for an amount of ETH', () => {
+    return newEXOToken().then(async exo => {
+      await fastForwardToAfterPreSale(exo);
+      await exo.startICO();
+
+      const buyer = accounts[6];
+      const amount = MIN_ICO_TOKENS_BOUGHT_EVERY_PURCHASE.div(ICO_ETH_TO_EXO).add(new BN(1));
+      const expectedExoBought = amount.mul(ICO_ETH_TO_EXO);
+      const expectedBuyerBalance = (await exo.balanceOf(buyer)).add(expectedExoBought);
+      const expectedContractBalance = web3.eth.getBalance(exo.address).add(amount);
+      const expectedICOFund = (await exo.availableICOFund.call()).sub(expectedExoBought);
+      const expectedICOTokensBought = (await exo.ICOTokensBought.call(buyer)).add(expectedExoBought);
+      
+      exo.buyICOTokens({from: buyer, value: amount})
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 1, 'EXO tokens should be sold');
+
+          for (let i = 0; i < result.logs.length; i++) {
+            const log = result.logs[i];
+            if (log.event === 'Transfer') {
+              assert.equal(log.args.from, exo.address, 'The transfer should originate from EXO token contract');
+              assert.equal(log.args.to, buyer, 'The transfer should be designated to buyer');
+              assert(log.args.value.eq(expectedExoBought), 'The transfer value should be equal to EXO tokens bought');
+            }
+          }
+
+          const buyerBalance = await exo.balanceOf(buyer);
+          const contractBalance = web3.eth.getBalance(exo.address);
+          const remainingICOFund = await exo.availableICOFund.call();
+          const ICOTokensBought = await exo.ICOTokensBought.call(buyer);
+          assert(buyerBalance.eq(expectedBuyerBalance), 'Buyer\'s balance should be correct');
+          assert(contractBalance.eq(expectedContractBalance), 'Contract\'s balance should be correct');
+          assert(remainingICOFund.eq(expectedICOFund), 'Remaining ICO fund should be correct');
+          assert(ICOTokensBought.eq(expectedICOTokensBought), 'Total ICO tokens bought by buyer should be correct');
+        });
+    });
+  });
+
+  it('should NOT sell EXO tokens at ICO for ETH less than the minimum amount set per purchase', () => {
+    return newEXOToken().then(async exo => {
+      await fastForwardToAfterPreSale(exo);
+      await exo.startICO();
+
+      const buyer = accounts[6];
+      const amount = MIN_ICO_TOKENS_BOUGHT_EVERY_PURCHASE.div(ICO_ETH_TO_EXO).sub(new BN(1000));
+      const expectedExoBought = 0;
+      const expectedBuyerBalance = await exo.balanceOf(buyer);
+      const expectedContractBalance = web3.eth.getBalance(exo.address);
+      const expectedICOFund = await exo.availableICOFund.call();
+      const expectedICOTokensBought = await exo.ICOTokensBought.call(buyer);
+
+      exo.buyICOTokens({from: buyer, value: amount})
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 0, 'EXO tokens should NOT be sold');
+
+          const buyerBalance = await exo.balanceOf(buyer);
+          const contractBalance = web3.eth.getBalance(exo.address);
+          const remainingICOFund = await exo.availableICOFund.call();
+          const ICOTokensBought = await exo.ICOTokensBought.call(buyer);
+          assert(buyerBalance.eq(expectedBuyerBalance), 'Buyer\'s balance should be unchanged');
+          assert(contractBalance.eq(expectedContractBalance), 'Contract\'s balance should be unchanged');
+          assert(remainingICOFund.eq(expectedICOFund), 'Remaining ICO fund should be unchanged');
+          assert(ICOTokensBought.eq(expectedICOTokensBought), 'Total ICO tokens bought by buyer should be unchanged');
+        });
+    });
+  });
+
+  it('should NOT sell EXO tokens at ICO for ETH more than the maximum amount set for all purchases', () => {
+    return newEXOToken().then(async exo => {
+      await fastForwardToAfterPreSale(exo);
+      await exo.startICO();
+
+      const buyer = accounts[6];
+      let amount = MAX_ICO_TOKENS_BOUGHT.div(ICO_ETH_TO_EXO).sub(new BN(100000));
+      await exo.buyICOTokens({from: buyer, value: parseInt(amount.valueOf())});
+
+      const expectedExoBought = 0;
+      const expectedBuyerBalance = await exo.balanceOf(buyer);
+      const expectedContractBalance = web3.eth.getBalance(exo.address);
+      const expectedICOFund = await exo.availableICOFund.call();
+      const expectedICOTokensBought = await exo.ICOTokensBought.call(buyer);
+
+      amount = new BN(100001);
+
+      exo.buyICOTokens({from: buyer, value: amount})
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 0, 'EXO tokens should NOT be sold');
+
+          const buyerBalance = await exo.balanceOf(buyer);
+          const contractBalance = web3.eth.getBalance(exo.address);
+          const remainingICOFund = await exo.availableICOFund.call();
+          const ICOTokensBought = await exo.ICOTokensBought.call(buyer);
+          assert(buyerBalance.eq(expectedBuyerBalance), 'Buyer\'s balance should be unchanged');
+          assert(contractBalance.eq(expectedContractBalance), 'Contract\'s balance should be unchanged');
+          assert(remainingICOFund.eq(expectedICOFund), 'Remaining ICO fund should be unchanged');
+          assert(ICOTokensBought.eq(expectedICOTokensBought), 'Total ICO tokens bought by buyer should be unchanged');
+        });
+    });
+  });
+
   // it('should NOT sell EXO tokens at ICO if its tokens are insufficient', () => {});
   // it('should NOT sell EXO tokens at ICO if ICO has NOT been started', () => {});
   // it('should NOT sell EXO tokens at ICO if its deadline has passed', () => {});
@@ -177,11 +360,12 @@ contract('EXOToken', accounts => {
   // it('should NOT end the ICO if its deadline has not passed', () => {});
   // it('should NOT end the ICO if it has already been ended', () => {});
   // it('should NOT end the ICO if caller is NOT owner', () => {});
-  // it('should release the ICO fund to owner', () => {});
+  // it('should release the remaining ICO fund to owner', () => {});
   // it('should NOT release the ICO fund to owner if ICO has NOT been started', () => {});
   // it('should NOT release the ICO fund to owner if ICO has NOT been ended', () => {});
   // it('should NOT release the ICO fund to owner if there is no fund to release', () => {});
   // it('should NOT release the ICO fund to owner if caller is NOT owner', () => {});
+  // it('should allow owner to claim Ether fund raised in ICO', () => {});
 
   it('should airdrop to a recipient with a specific amount of tokens', () => {
     return newEXOToken().then(async exo => {

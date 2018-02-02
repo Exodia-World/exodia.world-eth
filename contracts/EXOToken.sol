@@ -29,6 +29,7 @@ contract EXOToken is StandardToken, Ownable {
     uint public preSaleStartTime;
     uint public preSaleDuration;
     uint public preSaleDeadline;
+    bool public preSaleEnded = false;
 
     uint256 public initialICOFund;
     uint256 public availableICOFund;
@@ -38,6 +39,7 @@ contract EXOToken is StandardToken, Ownable {
     uint public ICOStartTime;
     uint public ICODuration; // in seconds
     uint public ICODeadline; // ICOStartTime + ICODuration
+    bool public ICOEnded = false;
 
     uint256 public airdropAmount;
     address public airdropCarrier;
@@ -131,7 +133,7 @@ contract EXOToken is StandardToken, Ownable {
         // Ensure that the pre-sale hasn't been started before.
         require(preSaleStartTime == 0 && preSaleDeadline == 0);
         require(preSaleCarrier != address(0)); // carrier must be set first
-        require(ICOStartTime == 0 && ICODeadline == 0); // has ICO started?
+        assert(ICOStartTime == 0 && ICODeadline == 0); // has ICO started?
 
         preSaleStartTime = now;
         preSaleDeadline = preSaleStartTime.add(preSaleDuration);
@@ -146,6 +148,9 @@ contract EXOToken is StandardToken, Ownable {
     function endPreSale() public onlyOwner returns (bool) {
         // Ensure that the pre-sale has passed its deadline.
         require(preSaleStartTime > 0 && preSaleDeadline < now);
+        require(preSaleEnded == false);
+
+        preSaleEnded = true;
 
         EndPreSale(preSaleStartTime, preSaleDeadline, balances[preSaleCarrier]);
         return true;
@@ -196,6 +201,9 @@ contract EXOToken is StandardToken, Ownable {
     function endICO() public onlyOwner returns (bool) {
         // Ensure that the ICO has passed its deadline.
         require(ICOStartTime > 0 && ICODeadline < now);
+        require(ICOEnded == false);
+
+        ICOEnded = true;
 
         EndICO(ICOStartTime, ICODeadline, initialICOFund.sub(availableICOFund));
         return true;
@@ -204,7 +212,7 @@ contract EXOToken is StandardToken, Ownable {
     /**
      * @dev Release any remaining ICO fund back to owner after ICO ended.
      */
-    function releaseICOFundToOwner() public onlyOwner returns (bool) {
+    function releaseRemainingICOFundToOwner() public onlyOwner returns (bool) {
         require(ICOStartTime > 0 && ICODeadline < now); // has ICO ended?
         require(availableICOFund > 0);
 
