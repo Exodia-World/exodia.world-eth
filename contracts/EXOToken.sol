@@ -306,14 +306,14 @@ contract EXOToken is StandardToken, Ownable {
     function calculateInterest() public view returns (uint256) {
         require(ICOStartTime > 0 && ICODeadline < now); // ICO must have ended first
 
-        if (stakes[msg.sender].balance == 0 || stakes[msg.sender].startTime == 0) { return 0; }
+        if (stakes[msg.sender].balance == 0 || stakes[msg.sender].startTime == 0) {return 0;}
         require(stakes[msg.sender].startTime >= tokenCreationTime && stakes[msg.sender].startTime <= now);
 
         uint256 totalInterest = 0;
 
         // 10% for the first 3 years.
         uint interestPeriod = 3 years;
-        uint interestEndTime = interestStartTime.add(interestPeriod);
+        uint interestEndTime = tokenCreationTime.add(interestPeriod);
         uint256 interest = _calculateInterest(10, 7 days, tokenCreationTime, interestEndTime);
         totalInterest = totalInterest.add(interest);
 
