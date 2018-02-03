@@ -980,7 +980,15 @@ contract('EXOToken', accounts => {
 
   // it('should NOT transfer anything to owner account', () => {});
 
+
+  // // TO DO
+  // it('should display tokens bought/total tokens available for ICO', () => {});
+
   // // TO BE CONSIDERED
   // it('should freeze an account requested by owner', () => {});
   // it('should apply a transfer cap to any account requested by owner', () => {});
+  // transfer cap for owner: 25,000
+  // transfer cap for treasury: none
+  // transfer cap for pre-sale: none
+  // transfer cap for airdrop: 10
 });
