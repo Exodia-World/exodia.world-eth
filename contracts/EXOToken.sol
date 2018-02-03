@@ -52,6 +52,7 @@ contract EXOToken is StandardToken, Ownable {
     event EndPreSale(uint indexed startTime, uint indexed deadline, uint256 remainingPreSaleFund);
     event StartICO(uint indexed startTime, uint indexed deadline);
     event EndICO(uint indexed startTime, uint indexed deadline, uint256 totalICOTokensBought);
+    event TransferETH(address indexed from, address indexed to, uint256 value);
     event DepositStake(address indexed staker, uint256 indexed value);
     event WithdrawStake(address indexed staker, uint256 indexed value);
     event UpdateStakeBalance(address indexed staker, uint256 indexed balance);
@@ -219,6 +220,21 @@ contract EXOToken is StandardToken, Ownable {
         balances[owner] = balances[owner].add(availableICOFund);
         Transfer(this, owner, availableICOFund);
         availableICOFund = 0;
+        return true;
+    }
+
+    /**
+     * @dev Send ETH fund raised in ICO for owner.
+     */
+    function claimEtherFundRaisedInICO() public onlyOwner returns (bool) {
+        require(ICOStartTime > 0 && ICODeadline < now); // has ICO ended?
+        require(this.balance > 0);
+
+        // WARNING: All Ethers will be sent, even for non-ICO-related.
+        uint256 fundRaised = this.balance;
+        owner.transfer(fundRaised);
+
+        TransferETH(this, owner, fundRaised);
         return true;
     }
 
