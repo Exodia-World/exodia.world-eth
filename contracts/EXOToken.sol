@@ -400,6 +400,15 @@ contract EXOToken is StandardToken, Ownable {
     }
 
     /**
+     * @dev Get the staking start time of an account.
+     *
+     * @param _staker The staker's account address
+     */
+    function stakingStartTimeOf(address _staker) public view returns (uint) {
+        return stakes[_staker].startTime;
+    }
+
+    /**
      * @dev Internal function to calculate interest for a time period.
      *
      * @param _interestRatePerYear //

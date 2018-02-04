@@ -35,6 +35,47 @@ const newEXOToken = (changes = {}) => {
   return EXOToken.new(...args);
 };
 
+const logContract = async (exo, target) => {
+  const owner = await exo.owner.call();
+  const treasuryCarrier = await exo.treasuryCarrier.call();
+  const preSaleCarrier = await exo.preSaleCarrier.call();
+
+  console.log('');
+  console.log('EXOToken');
+  console.log('==============================');
+  console.log(`BALANCE=${web3.eth.getBalance(exo.address)}`);
+  console.log(`tokenCreationTime=${await exo.tokenCreationTime.call()}`);
+  if (target) {
+    console.log('');
+    console.log(`target's balance=${await exo.balanceOf.call(target)}`);
+    console.log(`target's stake balance=${await exo.stakeOf.call(target)}`);
+    console.log(`target's staking start time=${await exo.stakingStartTimeOf.call(target)}`);
+    console.log(`ICO tokens bought by target=${await exo.ICOTokensBought.call(target)}`);
+    console.log(`is target airdropped?=${await exo.airdropped.call(target)}`);
+    console.log('');
+  }
+  console.log(`owner=${owner}`);
+  console.log(`owner's ETH balance=${await web3.eth.getBalance(owner)}`);
+  console.log(`owner's EXO balance=${await exo.balanceOf.call(owner)}`);
+  console.log('');
+  console.log(`lockedTreasuryFund=${await exo.lockedTreasuryFund.call()}`);
+  console.log(`treasuryCarrier=${treasuryCarrier}`);
+  console.log(`treasuryCarrier's EXO balance=${await exo.balanceOf.call(treasuryCarrier)}`);
+  console.log('');
+  console.log(`lockedPreSaleFund=${await exo.lockedPreSaleFund.call()}`);
+  console.log(`preSaleCarrier=${preSaleCarrier}`);
+  console.log(`preSaleCarrier's EXO balance=${await exo.balanceOf.call(preSaleCarrier)}`);
+  console.log(`preSaleStartTime=${await exo.preSaleStartTime.call()}`);
+  console.log(`preSaleDeadline=${await exo.preSaleDeadline.call()}`);
+  console.log(`preSaleEnded=${await exo.preSaleEnded.call()}`);
+  console.log('');
+  console.log(`availableICOFund=${await exo.availableICOFund.call()}`);
+  console.log(`ICOStartTime=${await exo.ICOStartTime.call()}`);
+  console.log(`ICODeadline=${await exo.ICODeadline.call()}`);
+  console.log(`ICOEnded=${await exo.ICOEnded.call()}`);
+  console.log(`airdropCarrier=${await exo.airdropCarrier.call()}`);
+};
+
 contract('EXOToken', accounts => {
   const owner = accounts[0];
   const treasuryCarrier = accounts[1];
