@@ -254,7 +254,7 @@ contract('EXOToken', accounts => {
       await exo.startICO();
 
       const buyer = accounts[6];
-      const amount = MIN_ICO_TOKENS_BOUGHT_EVERY_PURCHASE.div(ICO_ETH_TO_EXO).add(new BN(1));
+      const amount = new BN(web3.toWei(MIN_ICO_TOKENS_BOUGHT_EVERY_PURCHASE.div(ICO_ETH_TO_EXO).add(new BN(1)).div(exp), "ether"));
       const expectedExoBought = amount.mul(ICO_ETH_TO_EXO);
       const expectedBuyerBalance = (await exo.balanceOf(buyer)).add(expectedExoBought);
       const expectedContractBalance = web3.eth.getBalance(exo.address).add(amount);
@@ -292,7 +292,7 @@ contract('EXOToken', accounts => {
       await exo.startICO();
 
       const buyer = accounts[6];
-      const amount = MIN_ICO_TOKENS_BOUGHT_EVERY_PURCHASE.div(ICO_ETH_TO_EXO).sub(new BN(1000));
+      const amount = new BN(web3.toWei(MIN_ICO_TOKENS_BOUGHT_EVERY_PURCHASE.div(ICO_ETH_TO_EXO).sub(new BN(1000)).div(exp), "ether"));
       const expectedExoBought = 0;
       const expectedBuyerBalance = await exo.balanceOf(buyer);
       const expectedContractBalance = web3.eth.getBalance(exo.address);
@@ -321,8 +321,8 @@ contract('EXOToken', accounts => {
       await exo.startICO();
 
       const buyer = accounts[6];
-      let amount = MAX_ICO_TOKENS_BOUGHT.div(ICO_ETH_TO_EXO).sub(new BN(100000));
-      await exo.buyICOTokens({from: buyer, value: parseInt(amount.valueOf())});
+      let amount = new BN(web3.toWei(MAX_ICO_TOKENS_BOUGHT.div(ICO_ETH_TO_EXO).sub(new BN(100000)).div(exp), "ether"));
+      await exo.buyICOTokens({from: buyer, value: amount});
 
       const expectedExoBought = 0;
       const expectedBuyerBalance = await exo.balanceOf(buyer);
@@ -384,7 +384,7 @@ contract('EXOToken', accounts => {
       await fastForwardToAfterPreSale(exo);
 
       const buyer = accounts[6];
-      const amount = MIN_ICO_TOKENS_BOUGHT_EVERY_PURCHASE.div(ICO_ETH_TO_EXO);
+      const amount = new BN(web3.toWei(MIN_ICO_TOKENS_BOUGHT_EVERY_PURCHASE.div(ICO_ETH_TO_EXO).div(exp), "ether"));
       const expectedExoBought = 0;
       const expectedBuyerBalance = await exo.balanceOf(buyer);
       const expectedContractBalance = web3.eth.getBalance(exo.address);
@@ -412,7 +412,7 @@ contract('EXOToken', accounts => {
       await fastForwardToAfterICO(exo);
 
       const buyer = accounts[6];
-      const amount = MIN_ICO_TOKENS_BOUGHT_EVERY_PURCHASE.div(ICO_ETH_TO_EXO);
+      const amount = new BN(web3.toWei(MIN_ICO_TOKENS_BOUGHT_EVERY_PURCHASE.div(ICO_ETH_TO_EXO).div(exp), "ether"));
       const expectedExoBought = 0;
       const expectedBuyerBalance = await exo.balanceOf(buyer);
       const expectedContractBalance = web3.eth.getBalance(exo.address);
@@ -718,7 +718,7 @@ contract('EXOToken', accounts => {
       await fastForwardToAfterPreSale(exo);
       await exo.startICO();
 
-      const amount = MIN_ICO_TOKENS_BOUGHT_EVERY_PURCHASE.div(ICO_ETH_TO_EXO);
+      const amount = new BN(web3.toWei(MIN_ICO_TOKENS_BOUGHT_EVERY_PURCHASE.div(ICO_ETH_TO_EXO).div(exp), "ether"));
       const exoBought = amount.mul(ICO_ETH_TO_EXO);
       await exo.buyICOTokens({from: accounts[7], value: amount});
 
@@ -750,10 +750,87 @@ contract('EXOToken', accounts => {
     });
   });
 
-  // it('should NOT allow owner to claim Ether fund raised in ICO if ICO has NOT started', () => {});
-  // it('should NOT allow owner to claim Ether fund raised in ICO if ICO has NOT ended', () => {});
-  // it('should NOT allow owner to claim Ether fund raised in ICO if there is no fund', () => {});
-  // it('should NOT allow owner to claim Ether fund raised in ICO if caller is NOT owner', () => {});
+  it('should NOT allow owner to claim Ether fund raised in ICO if ICO has NOT started', () => {
+    return newEXOToken().then(async exo => {
+      await fastForwardToAfterPreSale(exo);
+      const expectedContractBalance = web3.eth.getBalance(exo.address);
+      const expectedOwnerEthBalance = web3.eth.getBalance(owner);
+
+      exo.claimEtherFundRaisedInICO().then(async result => {
+        assert.equal(parseInt(result.receipt.status, 16), 0, 'Ether fund raised should NOT be claimed by owner');
+
+        const contractBalance = web3.eth.getBalance(exo.address);
+        const ownerEthBalance = web3.eth.getBalance(owner);
+        assert(contractBalance.eq(expectedContractBalance), 'Remaining contract balance should be unchanged');
+        assert(ownerEthBalance.lt(expectedOwnerEthBalance), 'Owner ETH balance should be less than before');
+      });
+    });
+  });
+
+  it('should NOT allow owner to claim Ether fund raised in ICO if ICO has NOT ended', () => {
+    return newEXOToken().then(async exo => {
+      await fastForwardToAfterPreSale(exo);
+      await exo.startICO();
+
+      const expectedContractBalance = web3.eth.getBalance(exo.address);
+      const expectedOwnerEthBalance = web3.eth.getBalance(owner);
+
+      exo.claimEtherFundRaisedInICO().then(async result => {
+        assert.equal(parseInt(result.receipt.status, 16), 0, 'Ether fund raised should NOT be claimed by owner');
+
+        const contractBalance = web3.eth.getBalance(exo.address);
+        const ownerEthBalance = web3.eth.getBalance(owner);
+        assert(contractBalance.eq(expectedContractBalance), 'Remaining contract balance should be unchanged');
+        assert(ownerEthBalance.lt(expectedOwnerEthBalance), 'Owner ETH balance should be less than before');
+      });
+    });
+  });
+
+  it('should NOT allow owner to claim Ether fund raised in ICO if there is no fund', () => {
+    return newEXOToken().then(async exo => {
+      await fastForwardToAfterICO(exo);
+
+      const expectedContractBalance = web3.eth.getBalance(exo.address);
+      const expectedOwnerEthBalance = web3.eth.getBalance(owner);
+
+      exo.claimEtherFundRaisedInICO().then(async result => {
+        assert.equal(parseInt(result.receipt.status, 16), 0, 'Ether fund raised should NOT be claimed by owner');
+
+        const contractBalance = web3.eth.getBalance(exo.address);
+        const ownerEthBalance = web3.eth.getBalance(owner);
+        assert(contractBalance.eq(expectedContractBalance), 'Remaining contract balance should be unchanged');
+        assert(ownerEthBalance.lt(expectedOwnerEthBalance), 'Owner ETH balance should be less than before');
+      });
+    });
+  });
+
+  it('should NOT allow owner to claim Ether fund raised in ICO if caller is NOT owner', () => {
+    return newEXOToken().then(async exo => {
+      await fastForwardToAfterPreSale(exo);
+      await exo.startICO();
+
+      const amount = new BN(web3.toWei(MIN_ICO_TOKENS_BOUGHT_EVERY_PURCHASE.div(ICO_ETH_TO_EXO).div(exp), "ether"));
+      const exoBought = amount.mul(ICO_ETH_TO_EXO);
+      await exo.buyICOTokens({from: accounts[7], value: amount});
+
+      const availableICOFund = await exo.availableICOFund.call();
+      const expectedContractBalance = web3.eth.getBalance(exo.address);
+      assert(availableICOFund.eq(AVAILABLE_ICO_FUND.sub(exoBought)), 'The remaining ICO fund should be correct');
+      assert(expectedContractBalance.eq(amount), 'The contract balance should be correct');
+      await helpers.increaseTime(ICO_DURATION.toNumber() + 1);
+
+      const expectedOwnerEthBalance = web3.eth.getBalance(owner);
+
+      exo.claimEtherFundRaisedInICO({from: accounts[6]}).then(async result => {
+        assert.equal(parseInt(result.receipt.status, 16), 0, 'Ether fund raised should NOT be claimed by owner');
+
+        const contractBalance = web3.eth.getBalance(exo.address);
+        const ownerEthBalance = web3.eth.getBalance(owner);
+        assert(contractBalance.eq(expectedContractBalance), 'Remaining contract balance should be unchanged');
+        assert(ownerEthBalance.lt(expectedOwnerEthBalance), 'Owner ETH balance should be less than before');
+      });
+    });
+  });
 
   it('should airdrop to a recipient with a specific amount of tokens', () => {
     return newEXOToken().then(async exo => {
