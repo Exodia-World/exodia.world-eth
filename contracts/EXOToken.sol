@@ -277,14 +277,10 @@ contract EXOToken is StandardToken, Ownable {
         require(ICOStartTime > 0 && ICODeadline < now); // ICO must have ended first
         require(_value > 0 && balances[msg.sender] >= _value);
 
-        uint256 totalBalanceBeforeDeposit = balances[msg.sender].add(stakes[msg.sender].balance);
-
         updateStakeBalance();
         balances[msg.sender] = balances[msg.sender].sub(_value);
         stakes[msg.sender].balance = stakes[msg.sender].balance.add(_value);
 
-        uint256 totalBalanceAfterDeposit = balances[msg.sender].add(stakes[msg.sender].balance);
-        assert(totalBalanceBeforeDeposit == totalBalanceAfterDeposit);
         DepositStake(msg.sender, _value);
         return true;
     }
@@ -299,14 +295,10 @@ contract EXOToken is StandardToken, Ownable {
         require(ICOStartTime > 0 && ICODeadline < now); // ICO must have ended first
         require(_value > 0 && stakes[msg.sender].balance >= _value);
 
-        uint256 totalBalanceBeforeWithdrawal = balances[msg.sender].add(stakes[msg.sender].balance);
-
         updateStakeBalance();
         stakes[msg.sender].balance = stakes[msg.sender].balance.sub(_value);
         balances[msg.sender] = balances[msg.sender].add(_value);
 
-        uint256 totalBalanceAfterWithdrawal = balances[msg.sender].add(stakes[msg.sender].balance);
-        assert(totalBalanceBeforeWithdrawal == totalBalanceAfterWithdrawal);
         WithdrawStake(msg.sender, _value);
         return true;
     }
