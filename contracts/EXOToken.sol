@@ -113,6 +113,14 @@ contract EXOToken is StandardToken, Ownable {
     }
 
     /**
+     * @dev Everyone can call the function expect owner.
+     */
+    modifier exceptOwner() {
+        require(msg.sender != owner);
+        _;
+    }
+
+    /**
      * @dev Only the airdrop carrier can call the function.
      */
     modifier onlyAirdropCarrier() {
@@ -265,9 +273,9 @@ contract EXOToken is StandardToken, Ownable {
      * Deposited stake is added to the staker's staking balance.
      * @param _value The amount of EXO to deposit
      */
-    function depositStake(uint256 _value) public returns (bool) {
+    function depositStake(uint256 _value) public exceptOwner returns (bool) {
         require(ICOStartTime > 0 && ICODeadline < now); // ICO must have ended first
-        require(balances[msg.sender] >= _value);
+        require(_value > 0 && balances[msg.sender] >= _value);
 
         uint256 totalBalanceBeforeDeposit = balances[msg.sender].add(stakes[msg.sender].balance);
 
@@ -287,9 +295,9 @@ contract EXOToken is StandardToken, Ownable {
      * Withdrawn stake is added to the staker's liquid balance.
      * @param _value The amount of EXO to withdraw
      */
-    function withdrawStake(uint256 _value) public returns (bool) {
+    function withdrawStake(uint256 _value) public exceptOwner returns (bool) {
         require(ICOStartTime > 0 && ICODeadline < now); // ICO must have ended first
-        require(stakes[msg.sender].balance >= _value);
+        require(_value > 0 && stakes[msg.sender].balance >= _value);
 
         uint256 totalBalanceBeforeWithdrawal = balances[msg.sender].add(stakes[msg.sender].balance);
 

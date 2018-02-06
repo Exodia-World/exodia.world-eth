@@ -1008,10 +1008,119 @@ contract('EXOToken', accounts => {
   });
 
   // it('should deposit stake with interest applied to current stake', () => {});
-  // it('should NOT deposit stake if balance is insufficient', () => {});
-  // it('should NOT deposit stake if deposit value is NOT more than ZERO', () => {});
-  // it('should NOT deposit stake if ICO has NOT ended', () => {});
-  // it('should NOT deposit stake if caller is owner', () => {});
+
+  it('should NOT deposit stake if balance is insufficient', () => {
+    return newEXOToken().then(async exo => {
+      const account = accounts[5];
+      await exo.transfer(account, 49*exp);
+
+      const deposit = (new BN(50)).mul(exp);
+      const expectedBalance = await exo.balanceOf.call(account);
+      const expectedStakeBalance = await exo.stakeOf.call(account);
+
+      await fastForwardToAfterICO(exo);
+
+      exo.depositStake(50*exp, {from: account})
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 0, 'The stake deposit should fail');
+
+          const balance = await exo.balanceOf.call(account);
+          const stakeBalance = await exo.stakeOf.call(account);
+          assert(balance.eq(expectedBalance), 'The staker\'s balance should be unchanged');
+          assert(stakeBalance.eq(expectedStakeBalance), 'The staker\'s stake balance should be unchanged');
+        });
+    });
+  });
+
+  it('should NOT deposit stake if deposit value is NOT more than ZERO', () => {
+    return newEXOToken().then(async exo => {
+      const account = accounts[5];
+      await exo.transfer(account, 100*exp);
+
+      const deposit = (new BN(50)).mul(exp);
+      const expectedBalance = await exo.balanceOf.call(account);
+      const expectedStakeBalance = await exo.stakeOf.call(account);
+
+      await fastForwardToAfterICO(exo);
+
+      exo.depositStake(0, {from: account})
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 0, 'The stake deposit should fail');
+
+          const balance = await exo.balanceOf.call(account);
+          const stakeBalance = await exo.stakeOf.call(account);
+          assert(balance.eq(expectedBalance), 'The staker\'s balance should be unchanged');
+          assert(stakeBalance.eq(expectedStakeBalance), 'The staker\'s stake balance should be unchanged');
+        });
+    });
+  });
+
+  it('should NOT deposit stake if ICO has NOT started', () => {
+    return newEXOToken().then(async exo => {
+      const account = accounts[5];
+      await exo.transfer(account, 100*exp);
+
+      const deposit = (new BN(50)).mul(exp);
+      const expectedBalance = await exo.balanceOf.call(account);
+      const expectedStakeBalance = await exo.stakeOf.call(account);
+
+      await fastForwardToAfterPreSale(exo);
+
+      exo.depositStake(50*exp, {from: account})
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 0, 'The stake deposit should fail');
+
+          const balance = await exo.balanceOf.call(account);
+          const stakeBalance = await exo.stakeOf.call(account);
+          assert(balance.eq(expectedBalance), 'The staker\'s balance should be unchanged');
+          assert(stakeBalance.eq(expectedStakeBalance), 'The staker\'s stake balance should be unchanged');
+        });
+    });
+  });
+
+  it('should NOT deposit stake if ICO has NOT ended', () => {
+    return newEXOToken().then(async exo => {
+      const account = accounts[5];
+      await exo.transfer(account, 100*exp);
+
+      const deposit = (new BN(50)).mul(exp);
+      const expectedBalance = await exo.balanceOf.call(account);
+      const expectedStakeBalance = await exo.stakeOf.call(account);
+
+      await fastForwardToAfterPreSale(exo);
+      await exo.startICO();
+
+      exo.depositStake(50*exp, {from: account})
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 0, 'The stake deposit should fail');
+
+          const balance = await exo.balanceOf.call(account);
+          const stakeBalance = await exo.stakeOf.call(account);
+          assert(balance.eq(expectedBalance), 'The staker\'s balance should be unchanged');
+          assert(stakeBalance.eq(expectedStakeBalance), 'The staker\'s stake balance should be unchanged');
+        });
+    });
+  });
+
+  it('should NOT deposit stake if caller is owner', () => {
+    return newEXOToken().then(async exo => {
+      const deposit = (new BN(50)).mul(exp);
+      const expectedBalance = await exo.balanceOf.call(owner);
+      const expectedStakeBalance = await exo.stakeOf.call(owner);
+
+      await fastForwardToAfterICO(exo);
+
+      exo.depositStake(50*exp, {from: owner})
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 0, 'The stake deposit should fail');
+
+          const balance = await exo.balanceOf.call(owner);
+          const stakeBalance = await exo.stakeOf.call(owner);
+          assert(balance.eq(expectedBalance), 'The staker\'s balance should be unchanged');
+          assert(stakeBalance.eq(expectedStakeBalance), 'The staker\'s stake balance should be unchanged');
+        });
+    });
+  });
 
   it('should withdraw stake with ZERO interest applied if the staking is NOT for at least 7 days since last start time', () => {
     return newEXOToken().then(async exo => {
@@ -1044,10 +1153,52 @@ contract('EXOToken', accounts => {
   });
 
   // it('should withdraw stake with interest applied to current stake', () => {});
-  // it('should NOT withdraw stake if stake balance is insufficient', () => {});
-  // it('should NOT withdraw stake if withdrawal value is NOT more than ZERO', () => {});
-  // it('should NOT withdraw stake if ICO has NOT ended', () => {});
-  // it('should NOT withdraw stake if caller is owner', () => {});
+
+  it('should NOT withdraw stake if stake balance is insufficient', () => {
+    return newEXOToken().then(async exo => {
+      const account = accounts[5];
+      await exo.transfer(account, 100*exp);
+      await fastForwardToAfterICO(exo);
+      await exo.depositStake(49*exp, {from: account});
+
+      const withdrawal = (new BN(50)).mul(exp);
+      const expectedBalance = await exo.balanceOf.call(account);
+      const expectedStakeBalance = await exo.stakeOf.call(account);
+
+      exo.withdrawStake(50*exp, {from: account})
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 0, 'The stake withdrawal should fail');
+
+          const balance = await exo.balanceOf.call(account);
+          const stakeBalance = await exo.stakeOf.call(account);
+          assert(balance.eq(expectedBalance), 'The staker\'s balance should be unchanged');
+          assert(stakeBalance.eq(expectedStakeBalance), 'The staker\'s stake balance should be unchanged');
+        });
+    });
+  });
+
+  it('should NOT withdraw stake if withdrawal value is NOT more than ZERO', () => {
+    return newEXOToken().then(async exo => {
+      const account = accounts[5];
+      await exo.transfer(account, 100*exp);
+      await fastForwardToAfterICO(exo);
+      await exo.depositStake(50*exp, {from: account});
+
+      const withdrawal = (new BN(50)).mul(exp);
+      const expectedBalance = await exo.balanceOf.call(account);
+      const expectedStakeBalance = await exo.stakeOf.call(account);
+
+      exo.withdrawStake(0, {from: account})
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 0, 'The stake withdrawal should fail');
+
+          const balance = await exo.balanceOf.call(account);
+          const stakeBalance = await exo.stakeOf.call(account);
+          assert(balance.eq(expectedBalance), 'The staker\'s balance should be unchanged');
+          assert(stakeBalance.eq(expectedStakeBalance), 'The staker\'s stake balance should be unchanged');
+        });
+    });
+  });
 
   // it('should update stake balance with interest', () => {});
   // it('should NOT update stake balance with interest if ICO has NOT ended', () => {});
