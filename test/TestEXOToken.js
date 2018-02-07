@@ -868,7 +868,7 @@ contract('EXOToken', accounts => {
         const contractBalance = web3.eth.getBalance(exo.address);
         const ownerEthBalance = web3.eth.getBalance(owner);
         assert(contractBalance.eq(expectedContractBalance), 'Remaining contract balance should be unchanged');
-        assert(ownerEthBalance.lt(expectedOwnerEthBalance), 'Owner ETH balance should be less than before');
+        assert(ownerEthBalance.lte(expectedOwnerEthBalance), 'Owner ETH balance should be less than or equal to before');
       });
     });
   });
@@ -1260,12 +1260,155 @@ contract('EXOToken', accounts => {
     });
   });
 
-  // it('should update stake balance with interest', () => {});
-  // it('should NOT update stake balance with interest if ICO has NOT ended', () => {});
-  // it('should NOT update stake balance with interest if owner\'s balance is insufficient', () => {});
-  // it('should update stake balance with ZERO interest if there is no stake balance', () => {});
-  // it('should update stake balance with ZERO interest if the staking is NOT for at least 7 days since last start time', () => {});
-  // it('should NOT update stake balance if caller is owner', () => {});
+  it('should update stake balance with interest', () => {
+    return newEXOToken().then(async exo => {
+      const account = accounts[5];
+      await exo.transfer(account, 100*exp);
+      await fastForwardToAfterICO(exo);
+      await exo.depositStake(50*exp, {from: account});
+      await helpers.increaseTime(7*24*3600);
+
+      const expectedInterest = await exo.calculateInterest.call({from: account});
+      const expectedStakeBalance = (await exo.stakeOf.call(account)).add(expectedInterest);
+
+      exo.updateStakeBalance({from: account})
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 1, 'The stake balance update should complete');
+
+          for (let i = 0; i < result.logs.length; i++) {
+            const log = result.logs[i];
+            if (log.event === 'UpdateStakeBalance') {
+              assert.equal(log.args.staker, account, 'The staker account should be correct');
+              assert(log.args.balance.eq(expectedStakeBalance), 'The published stake balance should be correct');
+            }
+          }
+
+          const stakeBalance = await exo.stakeOf.call(account);
+          assert(stakeBalance.eq(expectedStakeBalance), 'The updated stake balance should be correct');
+        });
+    });
+  });
+
+  it('should NOT update stake balance with interest if ICO has NOT ended', () => {
+    return newEXOToken().then(async exo => {
+      const account = accounts[5];
+      await exo.transfer(account, 100*exp);
+      await exo.depositStake(50*exp, {from: account});
+      await helpers.increaseTime(7*24*3600);
+
+      const expectedStakeBalance = await exo.stakeOf.call(account);
+
+      exo.updateStakeBalance({from: account})
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 0, 'The stake balance update should fail');
+
+          const stakeBalance = await exo.stakeOf.call(account);
+          assert(stakeBalance.eq(expectedStakeBalance), 'The stake balance should be unchanged');
+        });
+    });
+  });
+
+  it('should update stake balance with owner balance if owner\'s balance is insufficient', () => {
+    return newEXOToken({totalSupply: 40000101}).then(async exo => {
+      const account = accounts[5];
+      await exo.transfer(account, 100*exp);
+      await fastForwardToAfterICO(exo);
+      await exo.depositStake(100*exp, {from: account});
+      await helpers.increaseTime(1000*24*3600);
+
+      const ownerBalance = await exo.balanceOf.call(owner);
+      const expectedStakeBalance = (await exo.stakeOf.call(account)).add(ownerBalance);
+
+      exo.updateStakeBalance({from: account})
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 1, 'The stake balance update should complete');
+
+          for (let i = 0; i < result.logs.length; i++) {
+            const log = result.logs[i];
+            if (log.event === 'UpdateStakeBalance') {
+              assert.equal(log.args.staker, account, 'The staker account should be correct');
+              assert(log.args.balance.eq(expectedStakeBalance), 'The published stake balance should be correct');
+            }
+          }
+
+          const stakeBalance = await exo.stakeOf.call(account);
+          assert(stakeBalance.eq(expectedStakeBalance), 'The updated stake balance should be correct');
+        });
+    });
+  });
+
+  it('should update stake balance with ZERO interest if there is no stake balance', () => {
+    return newEXOToken().then(async exo => {
+      const account = accounts[5];
+      await exo.transfer(account, 100*exp);
+      await fastForwardToAfterICO(exo);
+      await exo.depositStake(0, {from: account});
+      await helpers.increaseTime(7*24*3600);
+
+      const expectedStakeBalance = await exo.stakeOf.call(account);
+
+      exo.updateStakeBalance({from: account})
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 1, 'The stake balance update should complete');
+
+          for (let i = 0; i < result.logs.length; i++) {
+            const log = result.logs[i];
+            if (log.event === 'UpdateStakeBalance') {
+              assert.equal(log.args.staker, account, 'The staker account should be correct');
+              assert(log.args.balance.eq(expectedStakeBalance), 'The published stake balance should be correct');
+            }
+          }
+
+          const stakeBalance = await exo.stakeOf.call(account);
+          assert(stakeBalance.eq(expectedStakeBalance), 'The updated stake balance should be unchanged');
+        });
+    });
+  });
+
+  it('should update stake balance with ZERO interest if the staking is NOT for at least 7 days since last start time', () => {
+    return newEXOToken().then(async exo => {
+      const account = accounts[5];
+      await exo.transfer(account, 100*exp);
+      await fastForwardToAfterICO(exo);
+      await exo.depositStake(50*exp, {from: account});
+      await helpers.increaseTime(6*24*3600);
+
+      const expectedStakeBalance = await exo.stakeOf.call(account);
+
+      exo.updateStakeBalance({from: account})
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 1, 'The stake balance update should complete');
+
+          for (let i = 0; i < result.logs.length; i++) {
+            const log = result.logs[i];
+            if (log.event === 'UpdateStakeBalance') {
+              assert.equal(log.args.staker, account, 'The staker account should be correct');
+              assert(log.args.balance.eq(expectedStakeBalance), 'The published stake balance should be correct');
+            }
+          }
+
+          const stakeBalance = await exo.stakeOf.call(account);
+          assert(stakeBalance.eq(expectedStakeBalance), 'The updated stake balance should be unchanged');
+        });
+    });
+  });
+
+  it('should NOT update stake balance if caller is owner', () => {
+    return newEXOToken().then(async exo => {
+      await fastForwardToAfterICO(exo);
+      await exo.depositStake(50*exp);
+      await helpers.increaseTime(7*24*3600);
+
+      const expectedStakeBalance = await exo.stakeOf.call(owner);
+
+      exo.updateStakeBalance().then(async result => {
+        assert.equal(parseInt(result.receipt.status, 16), 0, 'The stake balance update should fail');
+
+        const stakeBalance = await exo.stakeOf.call(owner);
+        assert(stakeBalance.eq(expectedStakeBalance), 'The stake balance should be unchanged');
+      });
+    });
+  });
 
   // it('should calculate interest to be ZERO if staking is NOT for at least 7 days since last start time in first interest period', () => {});
   // it('should calculate interest correctly if staking is for multiple of 7 days since last start time in first interest period', () => {});

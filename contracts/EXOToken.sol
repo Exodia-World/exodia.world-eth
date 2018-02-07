@@ -306,7 +306,7 @@ contract EXOToken is StandardToken, Ownable {
     /**
      * @dev Update a staker's balance with staking interest.
      */
-    function updateStakeBalance() public returns (uint256) {
+    function updateStakeBalance() public exceptOwner returns (uint256) {
         require(ICOStartTime > 0 && ICODeadline < now); // ICO must have ended first
         uint256 interest = calculateInterest();
         require(balances[owner] >= interest);
