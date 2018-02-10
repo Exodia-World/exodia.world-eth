@@ -20,10 +20,8 @@ contract EXOToken is StandardToken, Ownable {
     uint8 public decimals = 18;
     uint public tokenCreationTime;
 
-    uint256 public lockedTreasuryFund;
     address public treasuryCarrier;
 
-    uint256 public lockedPreSaleFund;
     address public preSaleCarrier;
     uint256 public preSaleEthToExo;
     uint public preSaleStartTime;
@@ -44,6 +42,7 @@ contract EXOToken is StandardToken, Ownable {
     uint256 public airdropAmount;
     address public airdropCarrier;
 
+    mapping (bytes32 => uint256) public lockedFunds;
     mapping (address => uint256) public ICOTokensBought; // to keep track of ICO participants' contributions
     mapping (address => bool) public airdropped;
     mapping (address => Stake) public stakes;
@@ -91,8 +90,8 @@ contract EXOToken is StandardToken, Ownable {
         tokenCreationTime = now;
         totalSupply_ = _totalSupply.mul(uint(10)**decimals);
 
-        lockedTreasuryFund = _lockedTreasuryFund.mul(uint(10)**decimals);
-        lockedPreSaleFund = _lockedPreSaleFund.mul(uint(10)**decimals);
+        lockedFunds["treasury"] = _lockedTreasuryFund.mul(uint(10)**decimals);
+        lockedFunds["preSale"] = _lockedPreSaleFund.mul(uint(10)**decimals);
         preSaleEthToExo = _preSaleEthToExo;
         preSaleDuration = _preSaleDuration;
 
@@ -107,26 +106,24 @@ contract EXOToken is StandardToken, Ownable {
 
         // The remaining balance will be used for annual return on stakes.
         balances[msg.sender] = totalSupply_
-            .sub(lockedTreasuryFund)
-            .sub(lockedPreSaleFund)
+            .sub(lockedFunds["treasury"])
+            .sub(lockedFunds["preSale"])
             .sub(availableICOFund);
     }
 
-    /**
-     * @dev Everyone can call the function expect owner.
-     */
-    modifier exceptOwner() {
-        require(msg.sender != owner);
+    modifier exceptOwner() {require(msg.sender != owner); _;}
+    modifier onlyAirdropCarrier() {require(msg.sender == airdropCarrier); _;}
+
+    modifier beforePreSale() {require(preSaleStartTime == 0 && preSaleDeadline == 0); _;}
+    modifier afterPreSale() {require(preSaleStartTime > 0 && preSaleDeadline < now); _;}
+    modifier beforeOrDuringPreSale() {
+        require((preSaleStartTime == 0 && preSaleDeadline == 0) || (preSaleStartTime > 0 && preSaleStartTime <= now && preSaleDeadline >= now));
         _;
     }
 
-    /**
-     * @dev Only the airdrop carrier can call the function.
-     */
-    modifier onlyAirdropCarrier() {
-        require(msg.sender == airdropCarrier);
-        _;
-    }
+    modifier beforeICO() {require(ICOStartTime == 0 && ICODeadline == 0); _;}
+    modifier duringICO() {require(ICOStartTime > 0 && ICOStartTime <= now && ICODeadline >= now); _;}
+    modifier afterICO() {require(ICOStartTime > 0 && ICODeadline < now); _;}
 
     /**
      * @dev Don't accept any ETH without specific functions being called.
@@ -138,11 +135,8 @@ contract EXOToken is StandardToken, Ownable {
     /**
      * @dev Start the pre-sale.
      */
-    function startPreSale() public onlyOwner returns (bool) {
-        // Ensure that the pre-sale hasn't been started before.
-        require(preSaleStartTime == 0 && preSaleDeadline == 0);
+    function startPreSale() public onlyOwner beforePreSale beforeICO returns (bool) {
         require(preSaleCarrier != address(0)); // carrier must be set first
-        assert(ICOStartTime == 0 && ICODeadline == 0); // has ICO started?
 
         preSaleStartTime = now;
         preSaleDeadline = preSaleStartTime.add(preSaleDuration);
@@ -154,9 +148,7 @@ contract EXOToken is StandardToken, Ownable {
     /**
      * @dev End the pre-sale.
      */
-    function endPreSale() public onlyOwner returns (bool) {
-        // Ensure that the pre-sale has passed its deadline.
-        require(preSaleStartTime > 0 && preSaleDeadline < now);
+    function endPreSale() public onlyOwner afterPreSale returns (bool) {
         require(preSaleEnded == false);
 
         preSaleEnded = true;
@@ -168,10 +160,7 @@ contract EXOToken is StandardToken, Ownable {
     /**
      * @dev Buy ICO tokens using ETH.
      */
-    function buyICOTokens() public payable returns (bool) {
-        // Check if the ICO is still active.
-        require(ICOStartTime != 0 && ICOStartTime <= now && ICODeadline >= now);
-
+    function buyICOTokens() public payable duringICO returns (bool) {
         // Check for serious participants and if we have tokens available.
         uint256 exoBought = msg.value.mul(ICOEthToExo);
         require(availableICOFund >= exoBought && exoBought >= minICOTokensBoughtEveryPurchase);
@@ -191,10 +180,7 @@ contract EXOToken is StandardToken, Ownable {
     /**
      * @dev Start the ICO.
      */
-    function startICO() public onlyOwner returns (bool) {
-        // Ensure that the ICO hasn't been started before.
-        require(ICOStartTime == 0 && ICODeadline == 0);
-        require(preSaleStartTime > 0 && preSaleDeadline < now); // has pre-sale ended?
+    function startICO() public onlyOwner afterPreSale beforeICO returns (bool) {
         require(availableICOFund > 0);
 
         ICOStartTime = now;
@@ -207,9 +193,7 @@ contract EXOToken is StandardToken, Ownable {
     /**
      * @dev End the ICO.
      */
-    function endICO() public onlyOwner returns (bool) {
-        // Ensure that the ICO has passed its deadline.
-        require(ICOStartTime > 0 && ICODeadline < now);
+    function endICO() public onlyOwner afterICO returns (bool) {
         require(ICOEnded == false);
 
         ICOEnded = true;
@@ -221,8 +205,7 @@ contract EXOToken is StandardToken, Ownable {
     /**
      * @dev Release any remaining ICO fund back to owner after ICO ended.
      */
-    function releaseRemainingICOFundToOwner() public onlyOwner returns (bool) {
-        require(ICOStartTime > 0 && ICODeadline < now); // has ICO ended?
+    function releaseRemainingICOFundToOwner() public onlyOwner afterICO returns (bool) {
         require(availableICOFund > 0);
 
         balances[owner] = balances[owner].add(availableICOFund);
@@ -234,8 +217,7 @@ contract EXOToken is StandardToken, Ownable {
     /**
      * @dev Send ETH fund raised in ICO for owner.
      */
-    function claimEtherFundRaisedInICO() public onlyOwner returns (bool) {
-        require(ICOStartTime > 0 && ICODeadline < now); // has ICO ended?
+    function claimEtherFundRaisedInICO() public onlyOwner afterICO returns (bool) {
         require(this.balance > 0);
 
         // WARNING: All Ethers will be sent, even for non-ICO-related.
@@ -252,10 +234,9 @@ contract EXOToken is StandardToken, Ownable {
      * The free tokens are added to the _to address' staking balance.
      * @param _to The address which the airdrop is designated to
      */
-    function airdrop(address _to) public onlyAirdropCarrier returns (bool) {
+    function airdrop(address _to) public onlyAirdropCarrier afterICO returns (bool) {
         require(_to != address(0));
         require(airdropped[_to] != true);
-        require(ICOStartTime > 0 && ICODeadline < now); // ICO must have ended first
         require(availableICOFund >= airdropAmount);
 
         // Airdrop to the designated account.
@@ -273,8 +254,7 @@ contract EXOToken is StandardToken, Ownable {
      * Deposited stake is added to the staker's staking balance.
      * @param _value The amount of EXO to deposit
      */
-    function depositStake(uint256 _value) public exceptOwner returns (bool) {
-        require(ICOStartTime > 0 && ICODeadline < now); // ICO must have ended first
+    function depositStake(uint256 _value) public exceptOwner afterICO returns (bool) {
         require(_value > 0 && balances[msg.sender] >= _value);
 
         updateStakeBalance();
@@ -291,8 +271,7 @@ contract EXOToken is StandardToken, Ownable {
      * Withdrawn stake is added to the staker's liquid balance.
      * @param _value The amount of EXO to withdraw
      */
-    function withdrawStake(uint256 _value) public exceptOwner returns (bool) {
-        require(ICOStartTime > 0 && ICODeadline < now); // ICO must have ended first
+    function withdrawStake(uint256 _value) public exceptOwner afterICO returns (bool) {
         require(_value > 0 && stakes[msg.sender].balance >= _value);
 
         updateStakeBalance();
@@ -306,8 +285,7 @@ contract EXOToken is StandardToken, Ownable {
     /**
      * @dev Update a staker's balance with staking interest.
      */
-    function updateStakeBalance() public exceptOwner returns (uint256) {
-        require(ICOStartTime > 0 && ICODeadline < now); // ICO must have ended first
+    function updateStakeBalance() public exceptOwner afterICO returns (uint256) {
         uint256 interest = calculateInterest();
         require(balances[owner] >= interest);
 
@@ -327,9 +305,7 @@ contract EXOToken is StandardToken, Ownable {
      * The interest is gained every 7 days.
      * For example, staking of 5 EXO for 16 days would yield 5 EXO * 0.0273% (rate per day) * 14 (days).
      */
-    function calculateInterest() public view returns (uint256) {
-        require(ICOStartTime > 0 && ICODeadline < now); // ICO must have ended first
-
+    function calculateInterest() public view afterICO returns (uint256) {
         if (stakes[msg.sender].balance == 0 || stakes[msg.sender].startTime == 0) {return 0;}
         require(stakes[msg.sender].startTime >= tokenCreationTime && stakes[msg.sender].startTime <= now);
 
@@ -357,7 +333,9 @@ contract EXOToken is StandardToken, Ownable {
      * @param _treasuryCarrier The address of new treasury carrier account
      */
     function setTreasuryCarrier(address _treasuryCarrier) public onlyOwner returns (bool) {
-        if (_moveFund(lockedTreasuryFund, treasuryCarrier, _treasuryCarrier)) {
+        require(_treasuryCarrier != preSaleCarrier && _treasuryCarrier != airdropCarrier);
+
+        if (_moveFund("treasury", treasuryCarrier, _treasuryCarrier)) {
             SetTreasuryCarrier(treasuryCarrier, _treasuryCarrier);
             treasuryCarrier = _treasuryCarrier;
             return true;
@@ -370,8 +348,10 @@ contract EXOToken is StandardToken, Ownable {
      *
      * @param _preSaleCarrier The address of new pre-sale carrier account
      */
-    function setPreSaleCarrier(address _preSaleCarrier) public onlyOwner returns (bool) {
-        if (_moveFund(lockedPreSaleFund, preSaleCarrier, _preSaleCarrier)) {
+    function setPreSaleCarrier(address _preSaleCarrier) public onlyOwner beforeOrDuringPreSale returns (bool) {
+        require(_preSaleCarrier != treasuryCarrier && _preSaleCarrier != airdropCarrier);
+
+        if (_moveFund("preSale", preSaleCarrier, _preSaleCarrier)) {
             SetPreSaleCarrier(preSaleCarrier, _preSaleCarrier);
             preSaleCarrier = _preSaleCarrier;
             return true;
@@ -385,6 +365,8 @@ contract EXOToken is StandardToken, Ownable {
      * @param _airdropCarrier The only address privileged to airdrop
      */
     function setAirdropCarrier(address _airdropCarrier) public onlyOwner returns (bool) {
+        require(_airdropCarrier != airdropCarrier && _airdropCarrier != owner && _airdropCarrier != preSaleCarrier && _airdropCarrier != treasuryCarrier);
+
         SetAirdropCarrier(airdropCarrier, _airdropCarrier);
         airdropCarrier = _airdropCarrier;
         return true;
@@ -438,25 +420,28 @@ contract EXOToken is StandardToken, Ownable {
     /**
      * @dev Move remaining fund to a new carrier.
      *
-     * @param _lockedFund The fund to release if the first carrier is set
+     * @param _lockedFundName The name of fund to be released if the first carrier is set
      * @param _oldCarrier The old carrier of fund
      * @param _newCarrier The new carrier of fund
      */
-    function _moveFund(uint256 _lockedFund, address _oldCarrier, address _newCarrier) internal onlyOwner returns (bool) {
+    function _moveFund(bytes32 _lockedFundName, address _oldCarrier, address _newCarrier) internal onlyOwner returns (bool) {
         // Check for non-sensical address and possibility of abuse.
-        require(_oldCarrier != _newCarrier && _newCarrier != address(0));
+        require(_oldCarrier != _newCarrier && _newCarrier != address(0) && _newCarrier != owner);
         require(balances[_newCarrier] == 0); // burn check!
 
-        if (_lockedFund == 0 && _oldCarrier != address(0)) {
+        uint256 lockedFund = lockedFunds[_lockedFundName];
+
+        if (lockedFund == 0 && _oldCarrier != address(0)) {
+            assert(balances[_oldCarrier] > 0);
             // Move fund from old carrier to new carrier.
             // WARNING: Everything will be transferred.
             balances[_newCarrier] = balances[_oldCarrier];
             balances[_oldCarrier] = 0;
             Transfer(_oldCarrier, _newCarrier, balances[_newCarrier]);
-        } else if (_lockedFund > 0 && _oldCarrier == address(0)) {
+        } else if (lockedFund > 0 && _oldCarrier == address(0)) {
             // Release fund to new carrier.
-            balances[_newCarrier] = _lockedFund;
-            _lockedFund = 0;
+            balances[_newCarrier] = lockedFund;
+            lockedFunds[_lockedFundName] = 0;
             Transfer(this, _newCarrier, balances[_newCarrier]);
         } else {
             // Revert if anything unexpected happens.

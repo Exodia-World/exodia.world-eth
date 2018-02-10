@@ -58,11 +58,11 @@ const logContract = async (exo, target) => {
   console.log(`owner's ETH balance=${await web3.eth.getBalance(owner)}`);
   console.log(`owner's EXO balance=${await exo.balanceOf.call(owner)}`);
   console.log('');
-  console.log(`lockedTreasuryFund=${await exo.lockedTreasuryFund.call()}`);
+  console.log(`lockedFunds["treasury"]=${await exo.lockedFunds.call("treasury")}`);
   console.log(`treasuryCarrier=${treasuryCarrier}`);
   console.log(`treasuryCarrier's EXO balance=${await exo.balanceOf.call(treasuryCarrier)}`);
   console.log('');
-  console.log(`lockedPreSaleFund=${await exo.lockedPreSaleFund.call()}`);
+  console.log(`lockedFunds["preSale"]=${await exo.lockedFunds.call("preSale")}`);
   console.log(`preSaleCarrier=${preSaleCarrier}`);
   console.log(`preSaleCarrier's EXO balance=${await exo.balanceOf.call(preSaleCarrier)}`);
   console.log(`preSaleStartTime=${await exo.preSaleStartTime.call()}`);
@@ -97,8 +97,8 @@ contract('EXOToken', accounts => {
   it('should have the correct parameters as deployed', () => {
     return EXOToken.deployed().then(async exo => {
       const totalSupply = await exo.totalSupply.call();
-      const lockedTreasuryFund = await exo.lockedTreasuryFund.call();
-      const lockedPreSaleFund = await exo.lockedPreSaleFund.call();
+      const lockedTreasuryFund = await exo.lockedFunds.call("treasury");
+      const lockedPreSaleFund = await exo.lockedFunds.call("preSale");
       const preSaleEthToExo = await exo.preSaleEthToExo.call();
       const preSaleDuration = await exo.preSaleDuration.call();
       const availableICOFund = await exo.availableICOFund.call();
@@ -952,7 +952,6 @@ contract('EXOToken', accounts => {
 
   it('should reject airdrops designated to the same account more than once', () => {
     return newEXOToken().then(async exo => {
-      const airdropCarrier = accounts[2];
       const recipient = accounts[5];
 
       await exo.setAirdropCarrier(airdropCarrier);
@@ -1421,34 +1420,515 @@ contract('EXOToken', accounts => {
   // it('should calculate interest to be ZERO if all interest periods have passed', () => {});
   // it('should NOT calculate interest if caller is owner', () => {});
 
-  // it('should move locked fund to new carrier\'s account and set the new treasury carrier', () => {});
-  // it('should move fund from old carrier\'s account to new carrier\'s account and set the new treasury carrier', () => {});
-  // it('should NOT move treasury fund+set carrier if new carrier\'s account has more than ZERO balance', () => {});
-  // it('should NOT move treasury fund+set carrier if old carrier\'s account has ZERO balance', () => {});
-  // it('should NOT move treasury fund+set carrier if new carrier is the same as old carrier', () => {});
-  // it('should NOT move treasury fund+set carrier if new carrier has account address of 0x0', () => {});
-  // it('should NOT move treasury fund+set carrier if new carrier has account address of owner', () => {});
-  // it('should NOT move treasury fund+set carrier if new carrier has account address of another carrier', () => {});
-  // it('should NOT move treasury fund+set carrier if caller is NOT owner', () => {});
+  it('should move locked fund to new carrier\'s account and set the new treasury carrier', () => {
+    return newEXOToken().then(async exo => {
+      const initialLockedFund = await exo.lockedFunds.call('treasury');
+      assert(initialLockedFund.eq(LOCKED_TREASURY_FUND), 'The initial locked fund should be correct');
 
-  // it('should move locked fund to new carrier\'s account and set the new pre-sale carrier', () => {});
-  // it('should move fund from old carrier\'s account to new carrier\'s account and set the new pre-sale carrier', () => {});
-  // it('should NOT move pre-sale fund+set carrier if new carrier\'s account has more than ZERO balance', () => {});
-  // it('should NOT move pre-sale fund+set carrier if old carrier\'s account has ZERO balance', () => {});
-  // it('should NOT move pre-sale fund+set carrier if new carrier is the same as old carrier', () => {});
-  // it('should NOT move pre-sale fund+set carrier if new carrier has account address of 0x0', () => {});
-  // it('should NOT move pre-sale fund+set carrier if new carrier has account address of owner', () => {});
-  // it('should NOT move pre-sale fund+set carrier if new carrier has account address of another carrier', () => {});
-  // it('should NOT move pre-sale fund+set carrier if caller is NOT owner', () => {});
-  // it('should NOT move pre-sale fund+set carrier if pre-sale has ended', () => {});
+      exo.setTreasuryCarrier(treasuryCarrier)
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 1, 'The locked fund should be moved to new carrier\'s account');
 
-  // it('should set airdrop carrier', () => {});
-  // it('should NOT set airdrop carrier if new carrier has account address of owner', () => {});
-  // it('should NOT set airdrop carrier if new carrier is the same as old carrier', () => {});
-  // it('should NOT set airdrop carrier if new carrier has account address of another carrier', () => {});
-  // it('should NOT set airdrop carrier if caller is NOT owner', () => {});
+          for (let i = 0; i < result.logs.length; i++) {
+            const log = result.logs[i];
+            if (log.event === 'Transfer') {
+              assert.equal(log.args.from, exo.address, 'The transfer should originate from EXO Token contract');
+              assert.equal(log.args.to, treasuryCarrier, 'The transfer should be designated to new carrier');
+              assert(log.args.value.eq(LOCKED_TREASURY_FUND), 'The published transfer value should be correct');
+            } else if (log.event === 'SetTreasuryCarrier') {
+              assert.equal(log.args.oldCarrier, '0x0000000000000000000000000000000000000000', 'The published old carrier should be correct');
+              assert.equal(log.args.newCarrier, treasuryCarrier, 'The published new carrier should be correct');
+            }
+          }
 
-  // it('should get the stake balance of an account', () => {});
+          const lockedFund = await exo.lockedFunds.call('treasury');
+          const carrierSet = await exo.treasuryCarrier.call();
+          const newCarrierBalance = await exo.balanceOf.call(treasuryCarrier);
+          assert(lockedFund.eq(new BN(0)), 'Locked fund should be ZERO');
+          assert.equal(carrierSet, treasuryCarrier, 'New carrier should be set');
+          assert(newCarrierBalance.eq(initialLockedFund), 'New carrier\'s balance should be correct');
+        });
+    });
+  });
+
+  it('should move fund from old carrier\'s account to new carrier\'s account and set the new treasury carrier', () => {
+    return newEXOToken().then(async exo => {
+      await exo.setTreasuryCarrier(treasuryCarrier);
+      const initialOldCarrierBalance = await exo.balanceOf.call(treasuryCarrier);
+      assert(initialOldCarrierBalance.eq(LOCKED_TREASURY_FUND), 'The initial old carrier\'s balance should be correct');
+      const newCarrier = accounts[7];
+
+      exo.setTreasuryCarrier(newCarrier)
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 1, 'The old carrier\'s fund should be moved to new carrier\'s account');
+
+          for (let i = 0; i < result.logs.length; i++) {
+            const log = result.logs[i];
+            if (log.event === 'Transfer') {
+              assert.equal(log.args.from, treasuryCarrier, 'The transfer should originate from old carrier');
+              assert.equal(log.args.to, newCarrier, 'The transfer should be designated to new carrier');
+              assert(log.args.value.eq(initialOldCarrierBalance), 'The published transfer value should be correct');
+            } else if (log.event === 'SetTreasuryCarrier') {
+              assert.equal(log.args.oldCarrier, treasuryCarrier, 'The published old carrier should be correct');
+              assert.equal(log.args.newCarrier, newCarrier, 'The published new carrier should be correct');
+            }
+          }
+
+          const lockedFund = await exo.lockedFunds.call('treasury');
+          const oldCarrierBalance = await exo.balanceOf.call(treasuryCarrier);
+          const carrierSet = await exo.treasuryCarrier.call();
+          const newCarrierBalance = await exo.balanceOf.call(newCarrier);
+          assert(lockedFund.eq(new BN(0)), 'Locked fund should be ZERO');
+          assert(oldCarrierBalance.eq(new BN(0)), 'Old carrier\'s balance should be ZERO');
+          assert.equal(carrierSet, newCarrier, 'New carrier should be set');
+          assert(newCarrierBalance.eq(initialOldCarrierBalance), 'New carrier\'s balance should be correct');
+        });
+    });
+  });
+
+  it('should NOT move treasury fund+set carrier if new carrier\'s account has more than ZERO balance', () => {
+    return newEXOToken().then(async exo => {
+      const initialLockedFund = await exo.lockedFunds.call('treasury');
+      assert(initialLockedFund.eq(LOCKED_TREASURY_FUND), 'The initial locked fund should be correct');
+      await exo.transfer(treasuryCarrier, 1*exp);
+
+      exo.setTreasuryCarrier(treasuryCarrier)
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 0, 'The locked fund should NOT be moved');
+
+          const lockedFund = await exo.lockedFunds.call('treasury');
+          const carrierSet = await exo.treasuryCarrier.call();
+          const accountBalance = await exo.balanceOf.call(treasuryCarrier);
+          assert(lockedFund.eq(initialLockedFund), 'Locked fund should be unchanged');
+          assert.equal(carrierSet, '0x0000000000000000000000000000000000000000', 'Carrier should have address ZERO');
+          assert(accountBalance.eq((new BN(1)).mul(exp)), 'Account\'s balance should be unchanged');
+        });
+    });
+  });
+
+  it('should NOT move treasury fund+set carrier if old carrier\'s account has ZERO balance', () => {
+    return newEXOToken().then(async exo => {
+      await exo.setTreasuryCarrier(treasuryCarrier);
+      const initialOldCarrierBalance = await exo.balanceOf.call(treasuryCarrier);
+      assert(initialOldCarrierBalance.eq(LOCKED_TREASURY_FUND), 'The initial old carrier\'s balance should be correct');
+      await exo.transfer(owner, initialOldCarrierBalance.div(exp).toNumber() * exp, {from: treasuryCarrier});
+      const newCarrier = accounts[7];
+
+      exo.setTreasuryCarrier(newCarrier)
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 0, 'The old carrier\'s fund should NOT be moved');
+
+          const lockedFund = await exo.lockedFunds.call('treasury');
+          const carrierSet = await exo.treasuryCarrier.call();
+          const accountBalance = await exo.balanceOf.call(newCarrier);
+          assert(lockedFund.eq(new BN(0)), 'Locked fund should be ZERO');
+          assert.equal(carrierSet, treasuryCarrier, 'Carrier should be unchanged');
+          assert(accountBalance.eq(new BN(0)), 'Account\'s balance should be ZERO');
+        });
+    });
+  });
+
+  it('should NOT move treasury fund+set carrier if new carrier is the same as old carrier', () => {
+    return newEXOToken().then(async exo => {
+      await exo.setTreasuryCarrier(treasuryCarrier);
+
+      exo.setTreasuryCarrier(treasuryCarrier)
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 0, 'The old carrier\'s fund should NOT be moved');
+        });
+    });
+  });
+
+  it('should NOT move treasury fund+set carrier if new carrier has account address of 0x0', () => {
+    return newEXOToken().then(async exo => {
+      const initialLockedFund = await exo.lockedFunds.call('treasury');
+      assert(initialLockedFund.eq(LOCKED_TREASURY_FUND), 'The initial locked fund should be correct');
+
+      exo.setTreasuryCarrier('0x0000000000000000000000000000000000000000')
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 0, 'The locked fund should NOT be moved');
+
+          const lockedFund = await exo.lockedFunds.call('treasury');
+          const carrierSet = await exo.treasuryCarrier.call();
+          const accountBalance = await exo.balanceOf.call('0x0000000000000000000000000000000000000000');
+          assert(lockedFund.eq(initialLockedFund), 'Locked fund should be unchanged');
+          assert.equal(carrierSet, '0x0000000000000000000000000000000000000000', 'Carrier should have address 0x0');
+          assert(accountBalance.eq(new BN(0)), 'Account\'s balance should be ZERO');
+        });
+    });
+  });
+
+  it('should NOT move treasury fund+set carrier if new carrier has account address of owner', () => {
+    return newEXOToken().then(async exo => {
+      const initialOwnerBalance = await exo.balanceOf.call(owner);
+      const initialLockedFund = await exo.lockedFunds.call('treasury');
+      assert(initialLockedFund.eq(LOCKED_TREASURY_FUND), 'The initial locked fund should be correct');
+
+      exo.setTreasuryCarrier(owner)
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 0, 'The locked fund should NOT be moved');
+
+          const lockedFund = await exo.lockedFunds.call('treasury');
+          const carrierSet = await exo.treasuryCarrier.call();
+          const ownerBalance = await exo.balanceOf.call(owner);
+          assert(lockedFund.eq(initialLockedFund), 'Locked fund should be unchanged');
+          assert.equal(carrierSet, '0x0000000000000000000000000000000000000000', 'Carrier should have address 0x0');
+          assert(ownerBalance.eq(initialOwnerBalance), 'Owner\'s balance should be unchanged');
+        });
+    });
+  });
+
+  it('should NOT move treasury fund+set carrier if new carrier has account address of another carrier', () => {
+    return newEXOToken().then(async exo => {
+      const initialLockedFund = await exo.lockedFunds.call('treasury');
+      assert(initialLockedFund.eq(LOCKED_TREASURY_FUND), 'The initial locked fund should be correct');
+
+      const callback = async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 0, 'The locked fund should NOT be moved');
+
+          const lockedFund = await exo.lockedFunds.call('treasury');
+          const carrierSet = await exo.treasuryCarrier.call();
+          const accountBalance = await exo.balanceOf.call(treasuryCarrier);
+          assert(lockedFund.eq(initialLockedFund), 'Locked fund should be unchanged');
+          assert.equal(carrierSet, '0x0000000000000000000000000000000000000000', 'Carrier should have address ZERO');
+          assert(accountBalance.eq(new BN(0)), 'Account\'s balance should be ZERO');
+      };
+
+      await exo.setPreSaleCarrier(preSaleCarrier);
+      await exo.setAirdropCarrier(airdropCarrier);
+      exo.setTreasuryCarrier(preSaleCarrier).then(callback);
+      exo.setTreasuryCarrier(airdropCarrier).then(callback);
+    });
+  });
+
+  it('should NOT move treasury fund+set carrier if caller is NOT owner', () => {
+    return newEXOToken().then(async exo => {
+      const initialLockedFund = await exo.lockedFunds.call('treasury');
+      assert(initialLockedFund.eq(LOCKED_TREASURY_FUND), 'The initial locked fund should be correct');
+
+      exo.setTreasuryCarrier(treasuryCarrier, {from: accounts[7]})
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 0, 'The locked fund should NOT be moved');
+
+          const lockedFund = await exo.lockedFunds.call('treasury');
+          const carrierSet = await exo.treasuryCarrier.call();
+          const accountBalance = await exo.balanceOf.call(treasuryCarrier);
+          assert(lockedFund.eq(initialLockedFund), 'Locked fund should be unchanged');
+          assert.equal(carrierSet, '0x0000000000000000000000000000000000000000', 'Carrier should have address 0x0');
+          assert(accountBalance.eq(new BN(0)), 'Account\'s balance should be ZERO');
+        });
+    });
+  });
+
+  it('should move locked fund to new carrier\'s account and set the new pre-sale carrier', () => {
+    return newEXOToken().then(async exo => {
+      const initialLockedFund = await exo.lockedFunds.call('preSale');
+      assert(initialLockedFund.eq(LOCKED_PRESALE_FUND), 'The initial locked fund should be correct');
+
+      exo.setPreSaleCarrier(preSaleCarrier)
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 1, 'The locked fund should be moved to new carrier\'s account');
+
+          for (let i = 0; i < result.logs.length; i++) {
+            const log = result.logs[i];
+            if (log.event === 'Transfer') {
+              assert.equal(log.args.from, exo.address, 'The transfer should originate from EXO Token contract');
+              assert.equal(log.args.to, preSaleCarrier, 'The transfer should be designated to new carrier');
+              assert(log.args.value.eq(LOCKED_PRESALE_FUND), 'The published transfer value should be correct');
+            } else if (log.event === 'SetPreSaleCarrier') {
+              assert.equal(log.args.oldCarrier, '0x0000000000000000000000000000000000000000', 'The published old carrier should be correct');
+              assert.equal(log.args.newCarrier, preSaleCarrier, 'The published new carrier should be correct');
+            }
+          }
+
+          const lockedFund = await exo.lockedFunds.call('preSale');
+          const carrierSet = await exo.preSaleCarrier.call();
+          const newCarrierBalance = await exo.balanceOf.call(preSaleCarrier);
+          assert(lockedFund.eq(new BN(0)), 'Locked fund should be ZERO');
+          assert.equal(carrierSet, preSaleCarrier, 'New carrier should be set');
+          assert(newCarrierBalance.eq(initialLockedFund), 'New carrier\'s balance should be correct');
+        });
+    });
+  });
+
+  it('should move fund from old carrier\'s account to new carrier\'s account and set the new pre-sale carrier', () => {
+    return newEXOToken().then(async exo => {
+      await exo.setPreSaleCarrier(preSaleCarrier);
+      const initialOldCarrierBalance = await exo.balanceOf.call(preSaleCarrier);
+      assert(initialOldCarrierBalance.eq(LOCKED_PRESALE_FUND), 'The initial old carrier\'s balance should be correct');
+      const newCarrier = accounts[7];
+
+      exo.setPreSaleCarrier(newCarrier)
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 1, 'The old carrier\'s fund should be moved to new carrier\'s account');
+
+          for (let i = 0; i < result.logs.length; i++) {
+            const log = result.logs[i];
+            if (log.event === 'Transfer') {
+              assert.equal(log.args.from, preSaleCarrier, 'The transfer should originate from old carrier');
+              assert.equal(log.args.to, newCarrier, 'The transfer should be designated to new carrier');
+              assert(log.args.value.eq(initialOldCarrierBalance), 'The published transfer value should be correct');
+            } else if (log.event === 'SetPreSaleCarrier') {
+              assert.equal(log.args.oldCarrier, preSaleCarrier, 'The published old carrier should be correct');
+              assert.equal(log.args.newCarrier, newCarrier, 'The published new carrier should be correct');
+            }
+          }
+
+          const lockedFund = await exo.lockedFunds.call('preSale');
+          const oldCarrierBalance = await exo.balanceOf.call(preSaleCarrier);
+          const carrierSet = await exo.preSaleCarrier.call();
+          const newCarrierBalance = await exo.balanceOf.call(newCarrier);
+          assert(lockedFund.eq(new BN(0)), 'Locked fund should be ZERO');
+          assert(oldCarrierBalance.eq(new BN(0)), 'Old carrier\'s balance should be ZERO');
+          assert.equal(carrierSet, newCarrier, 'New carrier should be set');
+          assert(newCarrierBalance.eq(initialOldCarrierBalance), 'New carrier\'s balance should be correct');
+        });
+    });
+  });
+
+  it('should NOT move pre-sale fund+set carrier if new carrier\'s account has more than ZERO balance', () => {
+    return newEXOToken().then(async exo => {
+      const initialLockedFund = await exo.lockedFunds.call('preSale');
+      assert(initialLockedFund.eq(LOCKED_PRESALE_FUND), 'The initial locked fund should be correct');
+      await exo.transfer(preSaleCarrier, 1*exp);
+
+      exo.setPreSaleCarrier(preSaleCarrier)
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 0, 'The locked fund should NOT be moved');
+
+          const lockedFund = await exo.lockedFunds.call('preSale');
+          const carrierSet = await exo.preSaleCarrier.call();
+          const accountBalance = await exo.balanceOf.call(preSaleCarrier);
+          assert(lockedFund.eq(initialLockedFund), 'Locked fund should be unchanged');
+          assert.equal(carrierSet, '0x0000000000000000000000000000000000000000', 'Carrier should have address ZERO');
+          assert(accountBalance.eq((new BN(1)).mul(exp)), 'Account\'s balance should be unchanged');
+        });
+    });
+  });
+
+  it('should NOT move pre-sale fund+set carrier if old carrier\'s account has ZERO balance', () => {
+    return newEXOToken().then(async exo => {
+      await exo.setPreSaleCarrier(preSaleCarrier);
+      const initialOldCarrierBalance = await exo.balanceOf.call(preSaleCarrier);
+      assert(initialOldCarrierBalance.eq(LOCKED_PRESALE_FUND), 'The initial old carrier\'s balance should be correct');
+      await exo.transfer(owner, initialOldCarrierBalance.div(exp).toNumber() * exp, {from: preSaleCarrier});
+      const newCarrier = accounts[7];
+
+      exo.setPreSaleCarrier(newCarrier)
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 0, 'The old carrier\'s fund should NOT be moved');
+
+          const lockedFund = await exo.lockedFunds.call('preSale');
+          const carrierSet = await exo.preSaleCarrier.call();
+          const accountBalance = await exo.balanceOf.call(newCarrier);
+          assert(lockedFund.eq(new BN(0)), 'Locked fund should be ZERO');
+          assert.equal(carrierSet, preSaleCarrier, 'Carrier should be unchanged');
+          assert(accountBalance.eq(new BN(0)), 'Account\'s balance should be ZERO');
+        });
+    });
+  });
+
+  it('should NOT move pre-sale fund+set carrier if new carrier is the same as old carrier', () => {
+    return newEXOToken().then(async exo => {
+      await exo.setPreSaleCarrier(preSaleCarrier);
+
+      exo.setPreSaleCarrier(preSaleCarrier)
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 0, 'The old carrier\'s fund should NOT be moved');
+        });
+    });
+  });
+
+  it('should NOT move pre-sale fund+set carrier if new carrier has account address of 0x0', () => {
+    return newEXOToken().then(async exo => {
+      const initialLockedFund = await exo.lockedFunds.call('preSale');
+      assert(initialLockedFund.eq(LOCKED_PRESALE_FUND), 'The initial locked fund should be correct');
+
+      exo.setPreSaleCarrier('0x0000000000000000000000000000000000000000')
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 0, 'The locked fund should NOT be moved');
+
+          const lockedFund = await exo.lockedFunds.call('preSale');
+          const carrierSet = await exo.preSaleCarrier.call();
+          const accountBalance = await exo.balanceOf.call('0x0000000000000000000000000000000000000000');
+          assert(lockedFund.eq(initialLockedFund), 'Locked fund should be unchanged');
+          assert.equal(carrierSet, '0x0000000000000000000000000000000000000000', 'Carrier should have address 0x0');
+          assert(accountBalance.eq(new BN(0)), 'Account\'s balance should be ZERO');
+        });
+    });
+  });
+
+  it('should NOT move pre-sale fund+set carrier if new carrier has account address of owner', () => {
+    return newEXOToken().then(async exo => {
+      const initialOwnerBalance = await exo.balanceOf.call(owner);
+      const initialLockedFund = await exo.lockedFunds.call('preSale');
+      assert(initialLockedFund.eq(LOCKED_PRESALE_FUND), 'The initial locked fund should be correct');
+
+      exo.setPreSaleCarrier(owner)
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 0, 'The locked fund should NOT be moved');
+
+          const lockedFund = await exo.lockedFunds.call('preSale');
+          const carrierSet = await exo.preSaleCarrier.call();
+          const ownerBalance = await exo.balanceOf.call(owner);
+          assert(lockedFund.eq(initialLockedFund), 'Locked fund should be unchanged');
+          assert.equal(carrierSet, '0x0000000000000000000000000000000000000000', 'Carrier should have address 0x0');
+          assert(ownerBalance.eq(initialOwnerBalance), 'Owner\'s balance should be unchanged');
+        });
+    });
+  });
+
+  it('should NOT move pre-sale fund+set carrier if new carrier has account address of another carrier', () => {
+    return newEXOToken().then(async exo => {
+      const initialLockedFund = await exo.lockedFunds.call('preSale');
+      assert(initialLockedFund.eq(LOCKED_PRESALE_FUND), 'The initial locked fund should be correct');
+
+      const callback = async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 0, 'The locked fund should NOT be moved');
+
+          const lockedFund = await exo.lockedFunds.call('preSale');
+          const carrierSet = await exo.preSaleCarrier.call();
+          const accountBalance = await exo.balanceOf.call(preSaleCarrier);
+          assert(lockedFund.eq(initialLockedFund), 'Locked fund should be unchanged');
+          assert.equal(carrierSet, '0x0000000000000000000000000000000000000000', 'Carrier should have address ZERO');
+          assert(accountBalance.eq(new BN(0)), 'Account\'s balance should be ZERO');
+      };
+
+      await exo.setTreasuryCarrier(treasuryCarrier);
+      await exo.setAirdropCarrier(airdropCarrier);
+      exo.setPreSaleCarrier(treasuryCarrier).then(callback);
+      exo.setPreSaleCarrier(airdropCarrier).then(callback);
+    });
+  });
+
+  it('should NOT move pre-sale fund+set carrier if caller is NOT owner', () => {
+    return newEXOToken().then(async exo => {
+      const initialLockedFund = await exo.lockedFunds.call('preSale');
+      assert(initialLockedFund.eq(LOCKED_PRESALE_FUND), 'The initial locked fund should be correct');
+
+      exo.setPreSaleCarrier(preSaleCarrier, {from: accounts[7]})
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 0, 'The locked fund should NOT be moved');
+
+          const lockedFund = await exo.lockedFunds.call('preSale');
+          const carrierSet = await exo.preSaleCarrier.call();
+          const accountBalance = await exo.balanceOf.call(preSaleCarrier);
+          assert(lockedFund.eq(initialLockedFund), 'Locked fund should be unchanged');
+          assert.equal(carrierSet, '0x0000000000000000000000000000000000000000', 'Carrier should have address 0x0');
+          assert(accountBalance.eq(new BN(0)), 'Account\'s balance should be ZERO');
+        });
+    });
+  });
+
+  it('should NOT move pre-sale fund+set carrier if pre-sale has ended', () => {
+    return newEXOToken().then(async exo => {
+      const initialLockedFund = await exo.lockedFunds.call('preSale');
+      assert(initialLockedFund.eq(LOCKED_PRESALE_FUND), 'The initial locked fund should be correct');
+      const newCarrier = accounts[7];
+
+      await fastForwardToAfterPreSale(exo);
+
+      exo.setPreSaleCarrier(newCarrier)
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 0, 'The locked fund should NOT be moved');
+
+          const carrierSet = await exo.preSaleCarrier.call();
+          const accountBalance = await exo.balanceOf.call(newCarrier);
+          assert.equal(carrierSet, preSaleCarrier, 'Carrier should be unchanged');
+          assert(accountBalance.eq(new BN(0)), 'Account\'s balance should be ZERO');
+        });
+    });
+  });
+
+  it('should set airdrop carrier', () => {
+    return newEXOToken().then(async exo => {
+      exo.setAirdropCarrier(airdropCarrier)
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 1, 'The new airdrop carrier should be set');
+
+          for (let i = 0; i < result.logs.length; i++) {
+            const log = result.logs[i];
+            if (log.event === 'SetAirdropCarrier') {
+              assert.equal(log.args.oldCarrier, '0x0000000000000000000000000000000000000000', 'The published old carrier should be correct');
+              assert.equal(log.args.newCarrier, airdropCarrier, 'The published new carrier should be correct');
+            }
+          }
+
+          const carrierSet = await exo.airdropCarrier.call();
+          assert.equal(carrierSet, airdropCarrier, 'Carrier should be correct');
+        });
+    });
+  });
+
+  it('should NOT set airdrop carrier if new carrier has account address of owner', () => {
+    return newEXOToken().then(async exo => {
+      exo.setAirdropCarrier(owner)
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status ,16), 0, 'The new airdrop carrier should NOT be set');
+
+          const carrierSet = await exo.airdropCarrier.call();
+          assert.equal(carrierSet, '0x0000000000000000000000000000000000000000', 'Carrier should have address 0x0');
+        });
+    });
+  });
+
+  it('should NOT set airdrop carrier if new carrier is the same as old carrier', () => {
+    return newEXOToken().then(async exo => {
+      await exo.setAirdropCarrier(airdropCarrier);
+      exo.setAirdropCarrier(airdropCarrier)
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status ,16), 0, 'The new airdrop carrier should NOT be set');
+        });
+    });
+  });
+
+  it('should NOT set airdrop carrier if new carrier has account address of another carrier', () => {
+    return newEXOToken().then(async exo => {
+      const callback = async result => {
+        assert.equal(parseInt(result.receipt.status ,16), 0, 'The new airdrop carrier should NOT be set');
+
+        const carrierSet = await exo.airdropCarrier.call();
+        assert.equal(carrierSet, '0x0000000000000000000000000000000000000000', 'Carrier should have address 0x0');
+      };
+
+      await exo.setTreasuryCarrier(treasuryCarrier);
+      await exo.setPreSaleCarrier(preSaleCarrier);
+      exo.setAirdropCarrier(treasuryCarrier).then(callback);
+      exo.setAirdropCarrier(preSaleCarrier).then(callback);
+    });
+  });
+
+  it('should NOT set airdrop carrier if caller is NOT owner', () => {
+    return newEXOToken().then(async exo => {
+      exo.setAirdropCarrier(airdropCarrier, {from: accounts[5]})
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status ,16), 0, 'The new airdrop carrier should NOT be set');
+
+          const carrierSet = await exo.airdropCarrier.call();
+          assert.equal(carrierSet, '0x0000000000000000000000000000000000000000', 'Carrier should have address 0x0');
+        });
+    });
+  });
+
+  it('should get the staking start time of an account', () => {
+    return newEXOToken().then(async exo => {
+      const staker = accounts[5];
+      await exo.transfer(staker, 100*exp);
+      await fastForwardToAfterICO(exo);
+
+      exo.depositStake(50*exp, {from: staker})
+        .then(async result => {
+          const now = web3.eth.getBlock(web3.eth.blockNumber).timestamp;
+          const stakingStartTime = await exo.stakingStartTimeOf.call(staker);
+
+          if (! stakingStartTime.eq(new BN(now))) {
+            console.log('BLOCK TIMESTAMP INCONSISTENCY', stakingStartTime.valueOf(), now);
+          }
+          const diff = stakingStartTime.sub(new BN(now)).toNumber();
+          assert(diff === -1 || diff === 0, 'The staking start time should be equal to current block time');
+        });
+    });
+  });
 
   // it('should NOT transfer anything to owner account', () => {});
 
