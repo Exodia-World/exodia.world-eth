@@ -121,7 +121,7 @@ contract('EXOToken', accounts => {
       assert(airdropAmount.eq(AIRDROP_AMOUNT), 'The airdrop amount of EXO per account should be set');
     });
   });
-
+/*
   it('should start the pre-sale', () => {
     return newEXOToken().then(async exo => {
       const preSaleDuration = await exo.preSaleDuration.call();
@@ -1408,9 +1408,58 @@ contract('EXOToken', accounts => {
       });
     });
   });
+*/
+  it('should calculate interest to be ZERO if staking is NOT for at least 7 days since last start time in first interest period', () => {
+    return newEXOToken().then(async exo => {
+      const staker = accounts[5];
+      await exo.transfer(staker, 100*exp);
+      await fastForwardToAfterICO(exo);
+      await exo.depositStake(50*exp, {from: staker});
 
-  // it('should calculate interest to be ZERO if staking is NOT for at least 7 days since last start time in first interest period', () => {});
-  // it('should calculate interest correctly if staking is for multiple of 7 days since last start time in first interest period', () => {});
+      const interest = await exo.calculateInterest.call({from: staker});
+      assert(interest.eq(new BN(0)), 'The interest should be ZERO');
+    });
+  });
+
+  it('should calculate interest correctly if staking is for multiple of 7 days since last start time in first interest period', () => {
+    return newEXOToken().then(async exo => {
+      const staker = accounts[5];
+      await exo.transfer(staker, 100*exp);
+      await fastForwardToAfterICO(exo);
+      await exo.depositStake(50*exp, {from: staker});
+
+      const randomDays = Math.floor((Math.random() * 1095) + 7);
+      await helpers.increaseTime(randomDays*24*3600);
+      const eligibleStakingDays = (new BN(randomDays)).div(new BN(7)).mul(new BN(7));
+      const expectedInterest = (new BN(50)).mul(exp).mul(new BN(10)).mul(eligibleStakingDays).div(new BN(36500));
+
+      // exo.calculateInterest({from: staker})
+      //   .then(async result => {
+      //     for (let i = 0; i < result.logs.length; i++) {
+      //       const log = result.logs[i];
+      //       if (log.event === 'CalculateInterest') {
+      //         console.log('--FAILED INTEREST CALCULATION--');
+      //         console.log(`randomDays=${randomDays}`);
+      //         console.log(`eligibleStakingDays=${eligibleStakingDays.valueOf()}`);
+      //         console.log(`expectedInterest=${expectedInterest.valueOf()}`);
+      //         console.log(`pInterestCycles=${log.args.interestCycles.valueOf()}`);
+      //         console.log(`pEligibleStakingDays=${log.args.eligibleStakingDays.valueOf()}`);
+      //         console.log(`pInterest=${log.args.interest.valueOf()}`);
+      //       }
+      //     }
+      //   });
+      const interest = await exo.calculateInterest.call({from: staker});
+      if (! interest.eq(expectedInterest)) {
+        console.log('--FAILED INTEREST CALCULATION--');
+        console.log(`randomDays=${randomDays}`);
+        console.log(`eligibleStakingDays=${eligibleStakingDays.valueOf()}`);
+        console.log(`expectedInterest=${expectedInterest.valueOf()}`);
+        console.log(`interest=${interest.valueOf()}`);
+      }
+      assert(interest.eq(expectedInterest), 'The interest should be correct');
+    });
+  });
+
   // it('should calculate interest to be ZERO if staking is NOT for at least 7 days since last start time in second interest period', () => {});
   // it('should calculate interest correctly if staking is for multiple of 7 days since last start time in second interest period', () => {});
   // it('should calculate interest correctly if staking ranges from one interest period to the next', () => {});
@@ -1419,7 +1468,7 @@ contract('EXOToken', accounts => {
   // it('should calculate interest to be exactly as owner\'s remaining balance if the balance is insufficient', () => {});
   // it('should calculate interest to be ZERO if all interest periods have passed', () => {});
   // it('should NOT calculate interest if caller is owner', () => {});
-
+/*
   it('should move locked fund to new carrier\'s account and set the new treasury carrier', () => {
     return newEXOToken().then(async exo => {
       const initialLockedFund = await exo.lockedFunds.call('treasury');
@@ -1929,7 +1978,7 @@ contract('EXOToken', accounts => {
         });
     });
   });
-
+*/
   // it('should NOT transfer anything to owner account', () => {});
 
 

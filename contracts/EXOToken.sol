@@ -318,11 +318,11 @@ contract EXOToken is StandardToken, Ownable {
         totalInterest = totalInterest.add(interest);
 
         // 5% for the rest.
-        interestPeriod = 500 years; // some nonsensical time (or is it?)
-        uint interestStartTime = interestEndTime.add(1);
-        interestEndTime = interestStartTime.add(interestPeriod);
-        _calculateInterest(5, 7 days, interestStartTime, interestEndTime);
-        totalInterest = totalInterest.add(interest);
+        // interestPeriod = 500 years; // some nonsensical time (or is it?)
+        // uint interestStartTime = interestEndTime.add(1);
+        // interestEndTime = interestStartTime.add(interestPeriod);
+        // _calculateInterest(5, 7 days, interestStartTime, interestEndTime);
+        // totalInterest = totalInterest.add(interest);
 
         return balances[owner] >= totalInterest ? totalInterest : balances[owner];
     }
@@ -390,6 +390,8 @@ contract EXOToken is StandardToken, Ownable {
         return stakes[_staker].startTime;
     }
 
+    // event CalculateInterest(uint256 interestCycles, uint256 eligibleStakingDays, uint256 interest);
+
     /**
      * @dev Internal function to calculate interest for a time period.
      *
@@ -410,9 +412,10 @@ contract EXOToken is StandardToken, Ownable {
             // Example: 34 days / 7 days = 4 cycles with a remainder.
             uint interestCycles = now.sub(stakes[msg.sender].startTime).div(_interestCycleLength);
             // Example: 4 cycles * 7 days = 28 days.
-            uint eligibleStakingDays = interestCycles.mul(_interestCycleLength);
+            uint eligibleStakingDays = interestCycles.mul(_interestCycleLength.div(1 days));
             // Example: interest = balance * (10%/365 * 28 days).
             interest = stakes[msg.sender].balance.mul(_interestRatePerYear).mul(eligibleStakingDays).div(36500);
+            // CalculateInterest(interestCycles, eligibleStakingDays, interest);
         }
         return interest;
     }
