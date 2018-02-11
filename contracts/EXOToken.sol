@@ -18,7 +18,6 @@ contract EXOToken is StandardToken, Ownable {
     string public name = "EXO";
     string public symbol = "EXO";
     uint8 public decimals = 18;
-    uint public tokenCreationTime;
 
     address public treasuryCarrier;
 
@@ -66,6 +65,7 @@ contract EXOToken is StandardToken, Ownable {
      * @param _lockedTreasuryFund Locked treasury fund, only handed to its carrier account
      * @param _lockedPreSaleFund Locked pre-sale fund, only handed to its carrier account
      * @param _preSaleEthToExo The exchange rate at pre-sale -- from ETH to EXO
+     * @param _preSaleDuration The duration of pre-sale period in seconds
      * @param _availableICOFund Total amount of tokens that can be bought in ICO
      * @param _minICOTokensBoughtEveryPurchase The minimum amount of ICO tokens that must be bought by one account for every purchase
      * @param _maxICOTokensBought The maximum amount of ICO tokens that can be bought by one account for all purchases
@@ -87,7 +87,6 @@ contract EXOToken is StandardToken, Ownable {
         uint256 _airdropAmount
     ) public
     {
-        tokenCreationTime = now;
         totalSupply_ = _totalSupply.mul(uint(10)**decimals);
 
         lockedFunds["treasury"] = _lockedTreasuryFund.mul(uint(10)**decimals);
@@ -111,19 +110,38 @@ contract EXOToken is StandardToken, Ownable {
             .sub(availableICOFund);
     }
 
-    modifier exceptOwner() {require(msg.sender != owner); _;}
-    modifier onlyAirdropCarrier() {require(msg.sender == airdropCarrier); _;}
-
-    modifier beforePreSale() {require(preSaleStartTime == 0 && preSaleDeadline == 0); _;}
-    modifier afterPreSale() {require(preSaleStartTime > 0 && preSaleDeadline < now); _;}
+    modifier exceptOwner() {
+        require(msg.sender != owner);
+        _;
+    }
+    modifier onlyAirdropCarrier() {
+        require(msg.sender == airdropCarrier);
+        _;
+    }
+    modifier beforePreSale() {
+        require(preSaleStartTime == 0 && preSaleDeadline == 0);
+        _;
+    }
+    modifier afterPreSale() {
+        require(preSaleStartTime > 0 && preSaleDeadline < now);
+        _;
+    }
     modifier beforeOrDuringPreSale() {
         require((preSaleStartTime == 0 && preSaleDeadline == 0) || (preSaleStartTime > 0 && preSaleStartTime <= now && preSaleDeadline >= now));
         _;
     }
-
-    modifier beforeICO() {require(ICOStartTime == 0 && ICODeadline == 0); _;}
-    modifier duringICO() {require(ICOStartTime > 0 && ICOStartTime <= now && ICODeadline >= now); _;}
-    modifier afterICO() {require(ICOStartTime > 0 && ICODeadline < now); _;}
+    modifier beforeICO() {
+        require(ICOStartTime == 0 && ICODeadline == 0);
+        _;
+    }
+    modifier duringICO() {
+        require(ICOStartTime > 0 && ICOStartTime <= now && ICODeadline >= now);
+        _;
+    }
+    modifier afterICO() {
+        require(ICOStartTime > 0 && ICODeadline < now);
+        _;
+    }
 
     /**
      * @dev Don't accept any ETH without specific functions being called.
@@ -305,24 +323,43 @@ contract EXOToken is StandardToken, Ownable {
      * The interest is gained every 7 days.
      * For example, staking of 5 EXO for 16 days would yield 5 EXO * 0.0273% (rate per day) * 14 (days).
      */
-    function calculateInterest() public view afterICO returns (uint256) {
-        if (stakes[msg.sender].balance == 0 || stakes[msg.sender].startTime == 0) {return 0;}
-        require(stakes[msg.sender].startTime >= tokenCreationTime && stakes[msg.sender].startTime <= now);
+    function calculateInterest() public view exceptOwner afterICO returns (uint256) {
+        if (stakes[msg.sender].balance == 0 || stakes[msg.sender].startTime == 0 || balances[owner] == 0) {return 0;}
 
         uint256 totalInterest = 0;
+        uint stakingDays = 0;
+        uint eligibleStakingDays = 0;
+        uint stakingStartTime = stakes[msg.sender].startTime;
 
         // 10% for the first 3 years.
         uint interestPeriod = 3 years;
-        uint interestEndTime = tokenCreationTime.add(interestPeriod);
-        uint256 interest = _calculateInterest(10, 7 days, tokenCreationTime, interestEndTime);
-        totalInterest = totalInterest.add(interest);
+        uint interestStartTime = ICODeadline.add(1); // starts after ICO
+        uint interestEndTime = interestStartTime.add(interestPeriod);
+        // Only runs if the staking start time is within this interest period.
+        if (stakingStartTime >= interestStartTime && stakingStartTime <= interestEndTime) {
+            // Put an upper boundary for staking end time.
+            uint stakingEndTime = now > interestEndTime ? interestEndTime : now;
+            stakingDays = stakingEndTime.sub(stakingStartTime).div(1 days);
+            // Ex: 34 days // 7 days = 4 cycles with a remainder ==> 4 cycles * 7 days = 28 days
+            eligibleStakingDays = stakingDays.div(7).mul(7);
+            // Ex: interest = 50 EXO * (10%/365 days) * 28 days
+            totalInterest = stakes[msg.sender].balance.mul(10).mul(eligibleStakingDays).div(36500);
+        }
 
         // 5% for the rest.
-        // interestPeriod = 500 years; // some nonsensical time (or is it?)
-        // uint interestStartTime = interestEndTime.add(1);
-        // interestEndTime = interestStartTime.add(interestPeriod);
-        // _calculateInterest(5, 7 days, interestStartTime, interestEndTime);
-        // totalInterest = totalInterest.add(interest);
+        interestStartTime = interestEndTime.add(1);
+        if (now >= interestStartTime) {
+            uint leftOverStakingDays = 0;
+            if (stakingStartTime < interestStartTime) {
+                leftOverStakingDays = stakingDays.sub(eligibleStakingDays); // ex: 34 days - 28 days = 6 days
+                // Put a lower boundary for staking start time.
+                stakingStartTime = stakingStartTime < interestStartTime ? interestStartTime : stakingStartTime;
+            }
+            // Left over staking days from the first period are carried over to this one.
+            stakingDays = now.sub(stakingStartTime).div(1 days).add(leftOverStakingDays);
+            eligibleStakingDays = stakingDays.div(7).mul(7);
+            totalInterest = totalInterest.add(stakes[msg.sender].balance.mul(5).mul(eligibleStakingDays).div(36500));
+        }
 
         return balances[owner] >= totalInterest ? totalInterest : balances[owner];
     }
@@ -390,36 +427,6 @@ contract EXOToken is StandardToken, Ownable {
         return stakes[_staker].startTime;
     }
 
-    // event CalculateInterest(uint256 interestCycles, uint256 eligibleStakingDays, uint256 interest);
-
-    /**
-     * @dev Internal function to calculate interest for a time period.
-     *
-     * @param _interestRatePerYear //
-     * @param _interestCycleLength The length of a cycle in days
-     * @param _interestStartTime The start time of an interest period
-     * @param _interestEndTime The end time of an interest period
-     */
-    function _calculateInterest(
-        uint8 _interestRatePerYear,
-        uint _interestCycleLength,
-        uint _interestStartTime,
-        uint _interestEndTime
-    ) internal view returns (uint256)
-    {
-        uint256 interest = 0;
-        if (now >= _interestStartTime && now <= _interestEndTime) {
-            // Example: 34 days / 7 days = 4 cycles with a remainder.
-            uint interestCycles = now.sub(stakes[msg.sender].startTime).div(_interestCycleLength);
-            // Example: 4 cycles * 7 days = 28 days.
-            uint eligibleStakingDays = interestCycles.mul(_interestCycleLength.div(1 days));
-            // Example: interest = balance * (10%/365 * 28 days).
-            interest = stakes[msg.sender].balance.mul(_interestRatePerYear).mul(eligibleStakingDays).div(36500);
-            // CalculateInterest(interestCycles, eligibleStakingDays, interest);
-        }
-        return interest;
-    }
-
     /**
      * @dev Move remaining fund to a new carrier.
      *
@@ -453,5 +460,4 @@ contract EXOToken is StandardToken, Ownable {
 
         return true;
     }
-
 }
