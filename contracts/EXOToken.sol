@@ -146,14 +146,14 @@ contract EXOToken is StandardToken, Ownable {
     /**
      * @dev Don't accept any ETH without specific functions being called.
      */
-    function () public payable {
+    function () external payable {
         revert();
     }
 
     /**
      * @dev Start the pre-sale.
      */
-    function startPreSale() public onlyOwner beforePreSale beforeICO returns (bool) {
+    function startPreSale() external onlyOwner beforePreSale beforeICO returns (bool) {
         require(preSaleCarrier != address(0)); // carrier must be set first
 
         preSaleStartTime = now;
@@ -166,7 +166,7 @@ contract EXOToken is StandardToken, Ownable {
     /**
      * @dev End the pre-sale.
      */
-    function endPreSale() public onlyOwner afterPreSale returns (bool) {
+    function endPreSale() external onlyOwner afterPreSale returns (bool) {
         require(preSaleEnded == false);
 
         preSaleEnded = true;
@@ -178,7 +178,7 @@ contract EXOToken is StandardToken, Ownable {
     /**
      * @dev Buy ICO tokens using ETH.
      */
-    function buyICOTokens() public payable duringICO returns (bool) {
+    function buyICOTokens() external payable duringICO returns (bool) {
         // Check for serious participants and if we have tokens available.
         uint256 exoBought = msg.value.mul(ICOEthToExo);
         require(availableICOFund >= exoBought && exoBought >= minICOTokensBoughtEveryPurchase);
@@ -198,7 +198,7 @@ contract EXOToken is StandardToken, Ownable {
     /**
      * @dev Start the ICO.
      */
-    function startICO() public onlyOwner afterPreSale beforeICO returns (bool) {
+    function startICO() external onlyOwner afterPreSale beforeICO returns (bool) {
         require(availableICOFund > 0);
 
         ICOStartTime = now;
@@ -211,7 +211,7 @@ contract EXOToken is StandardToken, Ownable {
     /**
      * @dev End the ICO.
      */
-    function endICO() public onlyOwner afterICO returns (bool) {
+    function endICO() external onlyOwner afterICO returns (bool) {
         require(ICOEnded == false);
 
         ICOEnded = true;
@@ -223,7 +223,7 @@ contract EXOToken is StandardToken, Ownable {
     /**
      * @dev Release any remaining ICO fund back to owner after ICO ended.
      */
-    function releaseRemainingICOFundToOwner() public onlyOwner afterICO returns (bool) {
+    function releaseRemainingICOFundToOwner() external onlyOwner afterICO returns (bool) {
         require(availableICOFund > 0);
 
         balances[owner] = balances[owner].add(availableICOFund);
@@ -235,7 +235,7 @@ contract EXOToken is StandardToken, Ownable {
     /**
      * @dev Send ETH fund raised in ICO for owner.
      */
-    function claimEtherFundRaisedInICO() public onlyOwner afterICO returns (bool) {
+    function claimEtherFundRaisedInICO() external onlyOwner afterICO returns (bool) {
         require(this.balance > 0);
 
         // WARNING: All Ethers will be sent, even for non-ICO-related.
@@ -252,7 +252,7 @@ contract EXOToken is StandardToken, Ownable {
      * The free tokens are added to the _to address' staking balance.
      * @param _to The address which the airdrop is designated to
      */
-    function airdrop(address _to) public onlyAirdropCarrier afterICO returns (bool) {
+    function airdrop(address _to) external onlyAirdropCarrier afterICO returns (bool) {
         require(_to != address(0));
         require(airdropped[_to] != true);
         require(availableICOFund >= airdropAmount);
@@ -272,7 +272,7 @@ contract EXOToken is StandardToken, Ownable {
      * Deposited stake is added to the staker's staking balance.
      * @param _value The amount of EXO to deposit
      */
-    function depositStake(uint256 _value) public exceptOwner afterICO returns (bool) {
+    function depositStake(uint256 _value) external exceptOwner afterICO returns (bool) {
         require(_value > 0 && balances[msg.sender] >= _value);
 
         updateStakeBalance();
@@ -289,7 +289,7 @@ contract EXOToken is StandardToken, Ownable {
      * Withdrawn stake is added to the staker's liquid balance.
      * @param _value The amount of EXO to withdraw
      */
-    function withdrawStake(uint256 _value) public exceptOwner afterICO returns (bool) {
+    function withdrawStake(uint256 _value) external exceptOwner afterICO returns (bool) {
         require(_value > 0 && stakes[msg.sender].balance >= _value);
 
         updateStakeBalance();
@@ -369,7 +369,7 @@ contract EXOToken is StandardToken, Ownable {
      *
      * @param _treasuryCarrier The address of new treasury carrier account
      */
-    function setTreasuryCarrier(address _treasuryCarrier) public onlyOwner returns (bool) {
+    function setTreasuryCarrier(address _treasuryCarrier) external onlyOwner returns (bool) {
         require(_treasuryCarrier != preSaleCarrier && _treasuryCarrier != airdropCarrier);
 
         if (_moveFund("treasury", treasuryCarrier, _treasuryCarrier)) {
@@ -385,7 +385,7 @@ contract EXOToken is StandardToken, Ownable {
      *
      * @param _preSaleCarrier The address of new pre-sale carrier account
      */
-    function setPreSaleCarrier(address _preSaleCarrier) public onlyOwner beforeOrDuringPreSale returns (bool) {
+    function setPreSaleCarrier(address _preSaleCarrier) external onlyOwner beforeOrDuringPreSale returns (bool) {
         require(_preSaleCarrier != treasuryCarrier && _preSaleCarrier != airdropCarrier);
 
         if (_moveFund("preSale", preSaleCarrier, _preSaleCarrier)) {
@@ -401,7 +401,7 @@ contract EXOToken is StandardToken, Ownable {
      *
      * @param _airdropCarrier The only address privileged to airdrop
      */
-    function setAirdropCarrier(address _airdropCarrier) public onlyOwner returns (bool) {
+    function setAirdropCarrier(address _airdropCarrier) external onlyOwner returns (bool) {
         require(_airdropCarrier != airdropCarrier && _airdropCarrier != owner && _airdropCarrier != preSaleCarrier && _airdropCarrier != treasuryCarrier);
 
         SetAirdropCarrier(airdropCarrier, _airdropCarrier);
@@ -414,7 +414,7 @@ contract EXOToken is StandardToken, Ownable {
      *
      * @param _staker The staker's account address
      */
-    function stakeOf(address _staker) public view returns (uint256) {
+    function stakeOf(address _staker) external view returns (uint256) {
         return stakes[_staker].balance;
     }
 
@@ -423,7 +423,7 @@ contract EXOToken is StandardToken, Ownable {
      *
      * @param _staker The staker's account address
      */
-    function stakingStartTimeOf(address _staker) public view returns (uint) {
+    function stakingStartTimeOf(address _staker) external view returns (uint) {
         return stakes[_staker].startTime;
     }
 
