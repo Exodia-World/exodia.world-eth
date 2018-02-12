@@ -12,7 +12,7 @@ contract EXOToken is StandardToken, Ownable {
 
     struct Stake {
         uint256 balance;
-        uint startTime;
+        uint256 startTime;
     }
 
     string public name = "EXO";
@@ -23,9 +23,9 @@ contract EXOToken is StandardToken, Ownable {
 
     address public preSaleCarrier;
     uint256 public preSaleEthToExo;
-    uint public preSaleStartTime;
-    uint public preSaleDuration;
-    uint public preSaleDeadline;
+    uint256 public preSaleStartTime;
+    uint256 public preSaleDuration;
+    uint256 public preSaleDeadline;
     bool public preSaleEnded = false;
 
     uint256 public initialICOFund;
@@ -33,9 +33,9 @@ contract EXOToken is StandardToken, Ownable {
     uint256 public minICOTokensBoughtEveryPurchase; // by one account for one purchase
     uint256 public maxICOTokensBought; // by one account for all purchases
     uint256 public ICOEthToExo;
-    uint public ICOStartTime;
-    uint public ICODuration; // in seconds
-    uint public ICODeadline; // ICOStartTime + ICODuration
+    uint256 public ICOStartTime;
+    uint256 public ICODuration; // in seconds
+    uint256 public ICODeadline; // ICOStartTime + ICODuration
     bool public ICOEnded = false;
 
     uint256 public airdropAmount;
@@ -46,10 +46,10 @@ contract EXOToken is StandardToken, Ownable {
     mapping (address => bool) public airdropped;
     mapping (address => Stake) public stakes;
 
-    event StartPreSale(uint indexed startTime, uint indexed deadline);
-    event EndPreSale(uint indexed startTime, uint indexed deadline, uint256 remainingPreSaleFund);
-    event StartICO(uint indexed startTime, uint indexed deadline);
-    event EndICO(uint indexed startTime, uint indexed deadline, uint256 totalICOTokensBought);
+    event StartPreSale(uint256 indexed startTime, uint256 indexed deadline);
+    event EndPreSale(uint256 indexed startTime, uint256 indexed deadline, uint256 remainingPreSaleFund);
+    event StartICO(uint256 indexed startTime, uint256 indexed deadline);
+    event EndICO(uint256 indexed startTime, uint256 indexed deadline, uint256 totalICOTokensBought);
     event TransferETH(address indexed from, address indexed to, uint256 value);
     event DepositStake(address indexed staker, uint256 indexed value);
     event WithdrawStake(address indexed staker, uint256 indexed value);
@@ -78,12 +78,12 @@ contract EXOToken is StandardToken, Ownable {
         uint256 _lockedTreasuryFund,
         uint256 _lockedPreSaleFund,
         uint256 _preSaleEthToExo,
-        uint _preSaleDuration,
+        uint256 _preSaleDuration,
         uint256 _availableICOFund,
         uint256 _minICOTokensBoughtEveryPurchase,
         uint256 _maxICOTokensBought,
         uint256 _ICOEthToExo,
-        uint _ICODuration,
+        uint256 _ICODuration,
         uint256 _airdropAmount
     ) public
     {
@@ -327,18 +327,18 @@ contract EXOToken is StandardToken, Ownable {
         if (stakes[msg.sender].balance == 0 || stakes[msg.sender].startTime == 0 || balances[owner] == 0) {return 0;}
 
         uint256 totalInterest = 0;
-        uint stakingDays = 0;
-        uint eligibleStakingDays = 0;
-        uint stakingStartTime = stakes[msg.sender].startTime;
+        uint256 stakingDays = 0;
+        uint256 eligibleStakingDays = 0;
+        uint256 stakingStartTime = stakes[msg.sender].startTime;
 
         // 10% for the first 3 years.
-        uint interestPeriod = 3 years;
-        uint interestStartTime = ICODeadline.add(1); // starts after ICO
-        uint interestEndTime = interestStartTime.add(interestPeriod);
+        uint256 interestPeriod = 3 years;
+        uint256 interestStartTime = ICODeadline.add(1); // starts after ICO
+        uint256 interestEndTime = interestStartTime.add(interestPeriod);
         // Only runs if the staking start time is within this interest period.
         if (stakingStartTime >= interestStartTime && stakingStartTime <= interestEndTime) {
             // Put an upper boundary for staking end time.
-            uint stakingEndTime = now > interestEndTime ? interestEndTime : now;
+            uint256 stakingEndTime = now > interestEndTime ? interestEndTime : now;
             stakingDays = stakingEndTime.sub(stakingStartTime).div(1 days);
             // Ex: 34 days // 7 days = 4 cycles with a remainder ==> 4 cycles * 7 days = 28 days
             eligibleStakingDays = stakingDays.div(7).mul(7);
@@ -349,7 +349,7 @@ contract EXOToken is StandardToken, Ownable {
         // 5% for the rest.
         interestStartTime = interestEndTime.add(1);
         if (now >= interestStartTime) {
-            uint leftOverStakingDays = 0;
+            uint256 leftOverStakingDays = 0;
             if (stakingStartTime < interestStartTime) {
                 leftOverStakingDays = stakingDays.sub(eligibleStakingDays); // ex: 34 days - 28 days = 6 days
                 // Put a lower boundary for staking start time.
@@ -423,7 +423,7 @@ contract EXOToken is StandardToken, Ownable {
      *
      * @param _staker The staker's account address
      */
-    function stakingStartTimeOf(address _staker) external view returns (uint) {
+    function stakingStartTimeOf(address _staker) external view returns (uint256) {
         return stakes[_staker].startTime;
     }
 
