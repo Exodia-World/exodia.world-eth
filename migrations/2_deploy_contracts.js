@@ -4,6 +4,7 @@ module.exports = function(deployer) {
   deployer.deploy(
     EXOToken,
     100000000, // total supply
+    50000000, // minimum balance for stake reward
     10000000, // locked treasury fund
     5000000, // locked pre-sale fund
     7300, // pre-sale price (1 ETH = 7300 EXO)

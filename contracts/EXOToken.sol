@@ -19,8 +19,8 @@ contract EXOToken is StandardToken, Ownable {
     string public symbol = "EXO";
     uint8 public decimals = 18;
 
+    uint256 public minBalanceForStakeReward;
     address public treasuryCarrier;
-
     address public preSaleCarrier;
     uint256 public preSaleEthToExo;
     uint256 public preSaleStartTime;
@@ -45,6 +45,7 @@ contract EXOToken is StandardToken, Ownable {
     mapping (address => uint256) public ICOTokensBought; // to keep track of ICO participants' contributions
     mapping (address => bool) public airdropped;
     mapping (address => Stake) public stakes;
+    mapping (address => bool) public frozenAccounts;
 
     event StartPreSale(uint256 indexed startTime, uint256 indexed deadline);
     event EndPreSale(uint256 indexed startTime, uint256 indexed deadline, uint256 remainingPreSaleFund);
@@ -57,11 +58,13 @@ contract EXOToken is StandardToken, Ownable {
     event SetTreasuryCarrier(address indexed oldCarrier, address indexed newCarrier);
     event SetPreSaleCarrier(address indexed oldCarrier, address indexed newCarrier);
     event SetAirdropCarrier(address indexed oldCarrier, address indexed newCarrier);
+    event FreezeAccount(address targetAccount, bool isFrozen);
     
     /**
      * @dev Set token information.
      *
      * @param _totalSupply The total supply of tokens -- it's fixed
+     * @param _minBalanceForStakeReward The minimum balance required for stake reward
      * @param _lockedTreasuryFund Locked treasury fund, only handed to its carrier account
      * @param _lockedPreSaleFund Locked pre-sale fund, only handed to its carrier account
      * @param _preSaleEthToExo The exchange rate at pre-sale -- from ETH to EXO
@@ -75,6 +78,7 @@ contract EXOToken is StandardToken, Ownable {
      */
     function EXOToken(
         uint256 _totalSupply,
+        uint256 _minBalanceForStakeReward,
         uint256 _lockedTreasuryFund,
         uint256 _lockedPreSaleFund,
         uint256 _preSaleEthToExo,
@@ -88,6 +92,7 @@ contract EXOToken is StandardToken, Ownable {
     ) public
     {
         totalSupply_ = _totalSupply.mul(uint(10)**decimals);
+        minBalanceForStakeReward = _minBalanceForStakeReward.mul(uint(10)**decimals);
 
         lockedFunds["treasury"] = _lockedTreasuryFund.mul(uint(10)**decimals);
         lockedFunds["preSale"] = _lockedPreSaleFund.mul(uint(10)**decimals);
@@ -103,11 +108,13 @@ contract EXOToken is StandardToken, Ownable {
 
         airdropAmount = _airdropAmount.mul(uint(10)**decimals);
 
-        // The remaining balance will be used for annual return on stakes.
+        // Calculate remaining balance for stake reward.
         balances[msg.sender] = totalSupply_
             .sub(lockedFunds["treasury"])
             .sub(lockedFunds["preSale"])
             .sub(availableICOFund);
+
+        assert(balances[msg.sender] >= minBalanceForStakeReward);
     }
 
     modifier exceptOwner() {
@@ -142,12 +149,30 @@ contract EXOToken is StandardToken, Ownable {
         require(ICOStartTime > 0 && ICODeadline < now);
         _;
     }
+    modifier exceptFrozen() {
+        require(! frozenAccounts[msg.sender]);
+        _;
+    }
 
     /**
      * @dev Don't accept any ETH without specific functions being called.
      */
     function () external payable {
         revert();
+    }
+
+    /**
+    * @dev Transfer token for a specified address
+    *
+    * @param _to The address to transfer to.
+    * @param _value The amount to be transferred.
+    */
+    function transfer(address _to, uint256 _value) public exceptFrozen returns (bool) {
+        // Owner and frozen accounts can't receive tokens.
+        require(_to != owner && ! frozenAccounts[_to]);
+        require(msg.sender != owner || balances[owner].sub(_value) >= minBalanceForStakeReward);
+
+        return super.transfer(_to, _value);
     }
 
     /**
@@ -178,7 +203,7 @@ contract EXOToken is StandardToken, Ownable {
     /**
      * @dev Buy ICO tokens using ETH.
      */
-    function buyICOTokens() external payable duringICO returns (bool) {
+    function buyICOTokens() external payable exceptFrozen duringICO returns (bool) {
         // Check for serious participants and if we have tokens available.
         uint256 exoBought = msg.value.mul(ICOEthToExo);
         require(availableICOFund >= exoBought && exoBought >= minICOTokensBoughtEveryPurchase);
@@ -252,7 +277,7 @@ contract EXOToken is StandardToken, Ownable {
      * The free tokens are added to the _to address' staking balance.
      * @param _to The address which the airdrop is designated to
      */
-    function airdrop(address _to) external onlyAirdropCarrier afterICO returns (bool) {
+    function airdrop(address _to) external onlyAirdropCarrier exceptFrozen afterICO returns (bool) {
         require(_to != address(0));
         require(airdropped[_to] != true);
         require(availableICOFund >= airdropAmount);
@@ -272,7 +297,7 @@ contract EXOToken is StandardToken, Ownable {
      * Deposited stake is added to the staker's staking balance.
      * @param _value The amount of EXO to deposit
      */
-    function depositStake(uint256 _value) external exceptOwner afterICO returns (bool) {
+    function depositStake(uint256 _value) external exceptFrozen exceptOwner afterICO returns (bool) {
         require(_value > 0 && balances[msg.sender] >= _value);
 
         updateStakeBalance();
@@ -289,7 +314,7 @@ contract EXOToken is StandardToken, Ownable {
      * Withdrawn stake is added to the staker's liquid balance.
      * @param _value The amount of EXO to withdraw
      */
-    function withdrawStake(uint256 _value) external exceptOwner afterICO returns (bool) {
+    function withdrawStake(uint256 _value) external exceptFrozen exceptOwner afterICO returns (bool) {
         require(_value > 0 && stakes[msg.sender].balance >= _value);
 
         updateStakeBalance();
@@ -303,7 +328,7 @@ contract EXOToken is StandardToken, Ownable {
     /**
      * @dev Update a staker's balance with staking interest.
      */
-    function updateStakeBalance() public exceptOwner afterICO returns (uint256) {
+    function updateStakeBalance() public exceptFrozen exceptOwner afterICO returns (uint256) {
         uint256 interest = calculateInterest();
         require(balances[owner] >= interest);
 
@@ -327,38 +352,38 @@ contract EXOToken is StandardToken, Ownable {
         if (stakes[msg.sender].balance == 0 || stakes[msg.sender].startTime == 0 || balances[owner] == 0) {return 0;}
 
         uint256 totalInterest = 0;
-        uint256 stakingDays = 0;
-        uint256 eligibleStakingDays = 0;
-        uint256 stakingStartTime = stakes[msg.sender].startTime;
+        uint256 stakeDays = 0;
+        uint256 eligibleStakeDays = 0;
+        uint256 stakeStartTime = stakes[msg.sender].startTime;
 
         // 10% for the first 3 years.
         uint256 interestPeriod = 3 years;
         uint256 interestStartTime = ICODeadline.add(1); // starts after ICO
         uint256 interestEndTime = interestStartTime.add(interestPeriod);
-        // Only runs if the staking start time is within this interest period.
-        if (stakingStartTime >= interestStartTime && stakingStartTime <= interestEndTime) {
-            // Put an upper boundary for staking end time.
-            uint256 stakingEndTime = now > interestEndTime ? interestEndTime : now;
-            stakingDays = stakingEndTime.sub(stakingStartTime).div(1 days);
+        // Only runs if the stake start time is within this interest period.
+        if (stakeStartTime >= interestStartTime && stakeStartTime <= interestEndTime) {
+            // Put an upper boundary for stake end time.
+            uint256 stakeEndTime = now > interestEndTime ? interestEndTime : now;
+            stakeDays = stakeEndTime.sub(stakeStartTime).div(1 days);
             // Ex: 34 days // 7 days = 4 cycles with a remainder ==> 4 cycles * 7 days = 28 days
-            eligibleStakingDays = stakingDays.div(7).mul(7);
+            eligibleStakeDays = stakeDays.div(7).mul(7);
             // Ex: interest = 50 EXO * (10%/365 days) * 28 days
-            totalInterest = stakes[msg.sender].balance.mul(10).mul(eligibleStakingDays).div(36500);
+            totalInterest = stakes[msg.sender].balance.mul(10).mul(eligibleStakeDays).div(36500);
         }
 
         // 5% for the rest.
         interestStartTime = interestEndTime.add(1);
         if (now >= interestStartTime) {
-            uint256 leftOverStakingDays = 0;
-            if (stakingStartTime < interestStartTime) {
-                leftOverStakingDays = stakingDays.sub(eligibleStakingDays); // ex: 34 days - 28 days = 6 days
-                // Put a lower boundary for staking start time.
-                stakingStartTime = stakingStartTime < interestStartTime ? interestStartTime : stakingStartTime;
+            uint256 leftOverStakeDays = 0;
+            if (stakeStartTime < interestStartTime) {
+                leftOverStakeDays = stakeDays.sub(eligibleStakeDays); // ex: 34 days - 28 days = 6 days
+                // Put a lower boundary for stake start time.
+                stakeStartTime = stakeStartTime < interestStartTime ? interestStartTime : stakeStartTime;
             }
             // Left over staking days from the first period are carried over to this one.
-            stakingDays = now.sub(stakingStartTime).div(1 days).add(leftOverStakingDays);
-            eligibleStakingDays = stakingDays.div(7).mul(7);
-            totalInterest = totalInterest.add(stakes[msg.sender].balance.mul(5).mul(eligibleStakingDays).div(36500));
+            stakeDays = now.sub(stakeStartTime).div(1 days).add(leftOverStakeDays);
+            eligibleStakeDays = stakeDays.div(7).mul(7);
+            totalInterest = totalInterest.add(stakes[msg.sender].balance.mul(5).mul(eligibleStakeDays).div(36500));
         }
 
         return balances[owner] >= totalInterest ? totalInterest : balances[owner];
@@ -410,20 +435,35 @@ contract EXOToken is StandardToken, Ownable {
     }
 
     /**
+     * @dev Freeze or unfreeze an account.
+     *
+     * @param _targetAccount The target account to be frozen/unfrozen
+     * @param _isFrozen //
+     */
+    function freezeAccount(address _targetAccount, bool _isFrozen) external onlyOwner returns (bool) {
+        require(_targetAccount != owner);
+        require(frozenAccounts[_targetAccount] != _isFrozen);
+
+        frozenAccounts[_targetAccount] = _isFrozen;
+        FreezeAccount(_targetAccount, _isFrozen);
+        return true;
+    }
+
+    /**
      * @dev Get the stake balance of an account.
      *
      * @param _staker The staker's account address
      */
-    function stakeOf(address _staker) external view returns (uint256) {
+    function stakeBalanceOf(address _staker) external view returns (uint256) {
         return stakes[_staker].balance;
     }
 
     /**
-     * @dev Get the staking start time of an account.
+     * @dev Get the stake start time of an account.
      *
      * @param _staker The staker's account address
      */
-    function stakingStartTimeOf(address _staker) external view returns (uint256) {
+    function stakeStartTimeOf(address _staker) external view returns (uint256) {
         return stakes[_staker].startTime;
     }
 

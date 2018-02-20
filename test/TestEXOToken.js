@@ -5,6 +5,7 @@ const toBN = helpers.toBN;
 const exp = (new BN(10)).pow(new BN(18));
 
 const TOTAL_SUPPLY = (new BN(100000000)).mul(exp);
+const MIN_BALANCE_FOR_STAKE_REWARD = (new BN(50000000)).mul(exp);
 const LOCKED_TREASURY_FUND = (new BN(10000000)).mul(exp);
 const LOCKED_PRESALE_FUND = (new BN(5000000)).mul(exp);
 const PRESALE_ETH_TO_EXO = new BN(7300);
@@ -19,6 +20,7 @@ const AIRDROP_AMOUNT = (new BN(10)).mul(exp);
 const newEXOToken = (changes = {}) => {
   const argsObj = {
     totalSupply: TOTAL_SUPPLY.div(exp).toNumber(),
+    minBalanceForStakeReward: MIN_BALANCE_FOR_STAKE_REWARD.div(exp).toNumber(),
     lockedTreasuryFund: LOCKED_TREASURY_FUND.div(exp).toNumber(),
     lockedPreSaleFund: LOCKED_PRESALE_FUND.div(exp).toNumber(),
     preSaleEthToExo: PRESALE_ETH_TO_EXO.toNumber(),
@@ -47,8 +49,8 @@ const logContract = async (exo, target) => {
   if (target) {
     console.log('');
     console.log(`target's balance=${await exo.balanceOf.call(target)}`);
-    console.log(`target's stake balance=${await exo.stakeOf.call(target)}`);
-    console.log(`target's staking start time=${await exo.stakingStartTimeOf.call(target)}`);
+    console.log(`target's stake balance=${await exo.stakeBalanceOf.call(target)}`);
+    console.log(`target's stake start time=${await exo.stakeStartTimeOf.call(target)}`);
     console.log(`ICO tokens bought by target=${await exo.ICOTokensBought.call(target)}`);
     console.log(`is target airdropped?=${await exo.airdropped.call(target)}`);
     console.log('');
@@ -96,6 +98,7 @@ contract('EXOToken', accounts => {
   it('should have the correct parameters as deployed', () => {
     return EXOToken.deployed().then(async exo => {
       const totalSupply = await exo.totalSupply.call();
+      const minBalanceForStakeReward = await exo.minBalanceForStakeReward.call();
       const lockedTreasuryFund = await exo.lockedFunds.call("treasury");
       const lockedPreSaleFund = await exo.lockedFunds.call("preSale");
       const preSaleEthToExo = await exo.preSaleEthToExo.call();
@@ -108,6 +111,7 @@ contract('EXOToken', accounts => {
       const airdropAmount = await exo.airdropAmount.call();
 
       assert(totalSupply.eq(TOTAL_SUPPLY), 'The total supply of EXO should be set');
+      assert(minBalanceForStakeReward.eq(MIN_BALANCE_FOR_STAKE_REWARD), 'The minimum balance for stake reward should be set');
       assert(lockedTreasuryFund.eq(LOCKED_TREASURY_FUND), 'The locked treasury fund should be set');
       assert(lockedPreSaleFund.eq(LOCKED_PRESALE_FUND), 'The locked pre-sale fund should be set');
       assert(preSaleEthToExo.eq(PRESALE_ETH_TO_EXO), 'The exchange rate from ETH to EXO at pre-sale should be set');
@@ -120,7 +124,7 @@ contract('EXOToken', accounts => {
       assert(airdropAmount.eq(AIRDROP_AMOUNT), 'The airdrop amount of EXO per account should be set');
     });
   });
-
+/*
   it('should start the pre-sale', () => {
     return newEXOToken().then(async exo => {
       const preSaleDuration = await exo.preSaleDuration.call();
@@ -877,7 +881,7 @@ contract('EXOToken', accounts => {
       const recipient = accounts[4];
       const airdropAmount = await exo.airdropAmount.call();
       const expectedICOFund = (await exo.availableICOFund.call()).sub(airdropAmount);
-      const expectedStakeBalance = (await exo.stakeOf.call(recipient)).add(airdropAmount);
+      const expectedStakeBalance = (await exo.stakeBalanceOf.call(recipient)).add(airdropAmount);
 
       await exo.setAirdropCarrier(airdropCarrier);
       await fastForwardToAfterICO(exo);
@@ -895,7 +899,7 @@ contract('EXOToken', accounts => {
             }
           }
           const availableICOFund = await exo.availableICOFund.call();
-          const stakeBalance = await exo.stakeOf.call(recipient);
+          const stakeBalance = await exo.stakeBalanceOf.call(recipient);
           assert(availableICOFund.eq(expectedICOFund), 'The remaining ICO fund should be 10 tokens less');
           assert(stakeBalance.eq(expectedStakeBalance), 'The recipient\'s stake balance should be 10 tokens more');
           assert(await exo.airdropped(recipient) == true, 'The recipient should be marked as airdropped');
@@ -907,7 +911,7 @@ contract('EXOToken', accounts => {
     return newEXOToken().then(async exo => {
       const recipient = accounts[5];
       const expectedICOFund = await exo.availableICOFund.call();
-      const expectedStakeBalance = await exo.stakeOf.call(recipient);
+      const expectedStakeBalance = await exo.stakeBalanceOf.call(recipient);
 
       await exo.setAirdropCarrier(airdropCarrier);
       await fastForwardToAfterICO(exo);
@@ -917,7 +921,7 @@ contract('EXOToken', accounts => {
           assert.equal(parseInt(result.receipt.status, 16), 0, 'The airdrop should fail');
 
           const availableICOFund = await exo.availableICOFund.call();
-          const stakeBalance = await exo.stakeOf.call(recipient);
+          const stakeBalance = await exo.stakeBalanceOf.call(recipient);
           assert(availableICOFund.eq(expectedICOFund), 'The remaining ICO fund should be unchanged');
           assert(stakeBalance.eq(expectedStakeBalance), 'The recipient\'s stake balance should be unchanged');
           assert(await exo.airdropped(recipient) == false, 'The recipient should NOT be marked as airdropped');
@@ -931,7 +935,7 @@ contract('EXOToken', accounts => {
     }).then(async exo => {
       const recipient = accounts[6];
       const expectedICOFund = await exo.availableICOFund.call();
-      const expectedStakeBalance = await exo.stakeOf.call(recipient);
+      const expectedStakeBalance = await exo.stakeBalanceOf.call(recipient);
 
       await exo.setAirdropCarrier(airdropCarrier);
       await fastForwardToAfterICO(exo);
@@ -941,7 +945,7 @@ contract('EXOToken', accounts => {
           assert.equal(parseInt(result.receipt.status, 16), 0, 'The airdrop should fail');
 
           const availableICOFund = await exo.availableICOFund.call();
-          const stakeBalance = await exo.stakeOf.call(recipient);
+          const stakeBalance = await exo.stakeBalanceOf.call(recipient);
           assert(availableICOFund.eq(expectedICOFund), 'The remaining ICO fund should be unchanged');
           assert(stakeBalance.eq(expectedStakeBalance), 'The recipient\'s stake balance should be unchanged');
           assert(await exo.airdropped(recipient) == false, 'The recipient should NOT be marked as airdropped');
@@ -961,14 +965,14 @@ contract('EXOToken', accounts => {
       assert(airdropped, 'The account designated should already be marked as airdropped');
 
       const expectedICOFund = await exo.availableICOFund.call();
-      const expectedStakeBalance = await exo.stakeOf.call(recipient);
+      const expectedStakeBalance = await exo.stakeBalanceOf.call(recipient);
 
       exo.airdrop(recipient, {from: airdropCarrier})
         .then(async result => {
           assert.equal(parseInt(result.receipt.status, 16), 0, 'The airdrop should fail');
 
           const availableICOFund = await exo.availableICOFund.call();
-          const stakeBalance = await exo.stakeOf.call(recipient);
+          const stakeBalance = await exo.stakeBalanceOf.call(recipient);
           assert(availableICOFund.eq(expectedICOFund), 'The remaining ICO fund should be unchanged');
           assert(stakeBalance.eq(expectedStakeBalance), 'The recipient\'s stake balance should be unchanged');
         });
@@ -982,7 +986,7 @@ contract('EXOToken', accounts => {
 
       const deposit = (new BN(50)).mul(exp);
       const expectedBalance = (await exo.balanceOf.call(account)).sub(deposit);
-      const expectedStakeBalance = (await exo.stakeOf.call(account)).add(deposit);
+      const expectedStakeBalance = (await exo.stakeBalanceOf.call(account)).add(deposit);
 
       await fastForwardToAfterICO(exo);
 
@@ -998,7 +1002,7 @@ contract('EXOToken', accounts => {
             }
           }
           const balance = await exo.balanceOf.call(account);
-          const stakeBalance = await exo.stakeOf.call(account);
+          const stakeBalance = await exo.stakeBalanceOf.call(account);
           assert(balance.eq(expectedBalance), 'The staker\'s balance should be 50 tokens less');
           assert(stakeBalance.eq(expectedStakeBalance), 'The staker\'s stake balance should be 50 tokens more');
         });
@@ -1016,7 +1020,7 @@ contract('EXOToken', accounts => {
       const deposit = (new BN(50)).mul(exp);
       const expectedInterest = await exo.calculateInterest.call({from: account});
       const expectedBalance = (await exo.balanceOf.call(account)).sub(deposit);
-      const expectedStakeBalance = (await exo.stakeOf.call(account)).add(deposit).add(expectedInterest);
+      const expectedStakeBalance = (await exo.stakeBalanceOf.call(account)).add(deposit).add(expectedInterest);
 
       exo.depositStake(50*exp, {from: account})
         .then(async result => {
@@ -1030,7 +1034,7 @@ contract('EXOToken', accounts => {
             }
           }
           const balance = await exo.balanceOf.call(account);
-          const stakeBalance = await exo.stakeOf.call(account);
+          const stakeBalance = await exo.stakeBalanceOf.call(account);
           assert(balance.eq(expectedBalance), 'The staker\'s balance should be correct');
           assert(stakeBalance.eq(expectedStakeBalance), 'The staker\'s stake balance should be correct');
         });
@@ -1044,7 +1048,7 @@ contract('EXOToken', accounts => {
 
       const deposit = (new BN(50)).mul(exp);
       const expectedBalance = await exo.balanceOf.call(account);
-      const expectedStakeBalance = await exo.stakeOf.call(account);
+      const expectedStakeBalance = await exo.stakeBalanceOf.call(account);
 
       await fastForwardToAfterICO(exo);
 
@@ -1053,7 +1057,7 @@ contract('EXOToken', accounts => {
           assert.equal(parseInt(result.receipt.status, 16), 0, 'The stake deposit should fail');
 
           const balance = await exo.balanceOf.call(account);
-          const stakeBalance = await exo.stakeOf.call(account);
+          const stakeBalance = await exo.stakeBalanceOf.call(account);
           assert(balance.eq(expectedBalance), 'The staker\'s balance should be unchanged');
           assert(stakeBalance.eq(expectedStakeBalance), 'The staker\'s stake balance should be unchanged');
         });
@@ -1067,7 +1071,7 @@ contract('EXOToken', accounts => {
 
       const deposit = (new BN(50)).mul(exp);
       const expectedBalance = await exo.balanceOf.call(account);
-      const expectedStakeBalance = await exo.stakeOf.call(account);
+      const expectedStakeBalance = await exo.stakeBalanceOf.call(account);
 
       await fastForwardToAfterICO(exo);
 
@@ -1076,7 +1080,7 @@ contract('EXOToken', accounts => {
           assert.equal(parseInt(result.receipt.status, 16), 0, 'The stake deposit should fail');
 
           const balance = await exo.balanceOf.call(account);
-          const stakeBalance = await exo.stakeOf.call(account);
+          const stakeBalance = await exo.stakeBalanceOf.call(account);
           assert(balance.eq(expectedBalance), 'The staker\'s balance should be unchanged');
           assert(stakeBalance.eq(expectedStakeBalance), 'The staker\'s stake balance should be unchanged');
         });
@@ -1090,7 +1094,7 @@ contract('EXOToken', accounts => {
 
       const deposit = (new BN(50)).mul(exp);
       const expectedBalance = await exo.balanceOf.call(account);
-      const expectedStakeBalance = await exo.stakeOf.call(account);
+      const expectedStakeBalance = await exo.stakeBalanceOf.call(account);
 
       await fastForwardToAfterPreSale(exo);
 
@@ -1099,7 +1103,7 @@ contract('EXOToken', accounts => {
           assert.equal(parseInt(result.receipt.status, 16), 0, 'The stake deposit should fail');
 
           const balance = await exo.balanceOf.call(account);
-          const stakeBalance = await exo.stakeOf.call(account);
+          const stakeBalance = await exo.stakeBalanceOf.call(account);
           assert(balance.eq(expectedBalance), 'The staker\'s balance should be unchanged');
           assert(stakeBalance.eq(expectedStakeBalance), 'The staker\'s stake balance should be unchanged');
         });
@@ -1113,7 +1117,7 @@ contract('EXOToken', accounts => {
 
       const deposit = (new BN(50)).mul(exp);
       const expectedBalance = await exo.balanceOf.call(account);
-      const expectedStakeBalance = await exo.stakeOf.call(account);
+      const expectedStakeBalance = await exo.stakeBalanceOf.call(account);
 
       await fastForwardToAfterPreSale(exo);
       await exo.startICO();
@@ -1123,7 +1127,7 @@ contract('EXOToken', accounts => {
           assert.equal(parseInt(result.receipt.status, 16), 0, 'The stake deposit should fail');
 
           const balance = await exo.balanceOf.call(account);
-          const stakeBalance = await exo.stakeOf.call(account);
+          const stakeBalance = await exo.stakeBalanceOf.call(account);
           assert(balance.eq(expectedBalance), 'The staker\'s balance should be unchanged');
           assert(stakeBalance.eq(expectedStakeBalance), 'The staker\'s stake balance should be unchanged');
         });
@@ -1134,7 +1138,7 @@ contract('EXOToken', accounts => {
     return newEXOToken().then(async exo => {
       const deposit = (new BN(50)).mul(exp);
       const expectedBalance = await exo.balanceOf.call(owner);
-      const expectedStakeBalance = await exo.stakeOf.call(owner);
+      const expectedStakeBalance = await exo.stakeBalanceOf.call(owner);
 
       await fastForwardToAfterICO(exo);
 
@@ -1143,7 +1147,7 @@ contract('EXOToken', accounts => {
           assert.equal(parseInt(result.receipt.status, 16), 0, 'The stake deposit should fail');
 
           const balance = await exo.balanceOf.call(owner);
-          const stakeBalance = await exo.stakeOf.call(owner);
+          const stakeBalance = await exo.stakeBalanceOf.call(owner);
           assert(balance.eq(expectedBalance), 'The staker\'s balance should be unchanged');
           assert(stakeBalance.eq(expectedStakeBalance), 'The staker\'s stake balance should be unchanged');
         });
@@ -1159,7 +1163,7 @@ contract('EXOToken', accounts => {
 
       const withdrawal = (new BN(20)).mul(exp);
       const expectedBalance = (await exo.balanceOf.call(account)).add(withdrawal);
-      const expectedStakeBalance = (await exo.stakeOf.call(account)).sub(withdrawal);
+      const expectedStakeBalance = (await exo.stakeBalanceOf.call(account)).sub(withdrawal);
 
       exo.withdrawStake(20*exp, {from: account})
         .then(async result => {
@@ -1173,7 +1177,7 @@ contract('EXOToken', accounts => {
             }
           }
           const balance = await exo.balanceOf.call(account);
-          const stakeBalance = await exo.stakeOf.call(account);
+          const stakeBalance = await exo.stakeBalanceOf.call(account);
           assert(balance.eq(expectedBalance), 'The staker\'s balance should be 20 tokens more');
           assert(stakeBalance.eq(expectedStakeBalance), 'The staker\'s stake balance should be 20 tokens less');
         });
@@ -1191,7 +1195,7 @@ contract('EXOToken', accounts => {
       const withdrawal = (new BN(20)).mul(exp);
       const expectedInterest = await exo.calculateInterest.call({from: account});
       const expectedBalance = (await exo.balanceOf.call(account)).add(withdrawal);
-      const expectedStakeBalance = (await exo.stakeOf.call(account)).add(expectedInterest).sub(withdrawal);
+      const expectedStakeBalance = (await exo.stakeBalanceOf.call(account)).add(expectedInterest).sub(withdrawal);
 
       exo.withdrawStake(20*exp, {from: account})
         .then(async result => {
@@ -1205,7 +1209,7 @@ contract('EXOToken', accounts => {
             }
           }
           const balance = await exo.balanceOf.call(account);
-          const stakeBalance = await exo.stakeOf.call(account);
+          const stakeBalance = await exo.stakeBalanceOf.call(account);
           assert(balance.eq(expectedBalance), 'The staker\'s balance should be 20 tokens more');
           assert(stakeBalance.eq(expectedStakeBalance), 'The staker\'s stake balance should be correct');
         });
@@ -1221,14 +1225,14 @@ contract('EXOToken', accounts => {
 
       const withdrawal = (new BN(50)).mul(exp);
       const expectedBalance = await exo.balanceOf.call(account);
-      const expectedStakeBalance = await exo.stakeOf.call(account);
+      const expectedStakeBalance = await exo.stakeBalanceOf.call(account);
 
       exo.withdrawStake(50*exp, {from: account})
         .then(async result => {
           assert.equal(parseInt(result.receipt.status, 16), 0, 'The stake withdrawal should fail');
 
           const balance = await exo.balanceOf.call(account);
-          const stakeBalance = await exo.stakeOf.call(account);
+          const stakeBalance = await exo.stakeBalanceOf.call(account);
           assert(balance.eq(expectedBalance), 'The staker\'s balance should be unchanged');
           assert(stakeBalance.eq(expectedStakeBalance), 'The staker\'s stake balance should be unchanged');
         });
@@ -1244,14 +1248,14 @@ contract('EXOToken', accounts => {
 
       const withdrawal = (new BN(50)).mul(exp);
       const expectedBalance = await exo.balanceOf.call(account);
-      const expectedStakeBalance = await exo.stakeOf.call(account);
+      const expectedStakeBalance = await exo.stakeBalanceOf.call(account);
 
       exo.withdrawStake(0, {from: account})
         .then(async result => {
           assert.equal(parseInt(result.receipt.status, 16), 0, 'The stake withdrawal should fail');
 
           const balance = await exo.balanceOf.call(account);
-          const stakeBalance = await exo.stakeOf.call(account);
+          const stakeBalance = await exo.stakeBalanceOf.call(account);
           assert(balance.eq(expectedBalance), 'The staker\'s balance should be unchanged');
           assert(stakeBalance.eq(expectedStakeBalance), 'The staker\'s stake balance should be unchanged');
         });
@@ -1267,7 +1271,7 @@ contract('EXOToken', accounts => {
       await helpers.increaseTime(7*24*3600);
 
       const expectedInterest = await exo.calculateInterest.call({from: account});
-      const expectedStakeBalance = (await exo.stakeOf.call(account)).add(expectedInterest);
+      const expectedStakeBalance = (await exo.stakeBalanceOf.call(account)).add(expectedInterest);
 
       exo.updateStakeBalance({from: account})
         .then(async result => {
@@ -1281,7 +1285,7 @@ contract('EXOToken', accounts => {
             }
           }
 
-          const stakeBalance = await exo.stakeOf.call(account);
+          const stakeBalance = await exo.stakeBalanceOf.call(account);
           assert(stakeBalance.eq(expectedStakeBalance), 'The updated stake balance should be correct');
         });
     });
@@ -1294,13 +1298,13 @@ contract('EXOToken', accounts => {
       await exo.depositStake(50*exp, {from: account});
       await helpers.increaseTime(7*24*3600);
 
-      const expectedStakeBalance = await exo.stakeOf.call(account);
+      const expectedStakeBalance = await exo.stakeBalanceOf.call(account);
 
       exo.updateStakeBalance({from: account})
         .then(async result => {
           assert.equal(parseInt(result.receipt.status, 16), 0, 'The stake balance update should fail');
 
-          const stakeBalance = await exo.stakeOf.call(account);
+          const stakeBalance = await exo.stakeBalanceOf.call(account);
           assert(stakeBalance.eq(expectedStakeBalance), 'The stake balance should be unchanged');
         });
     });
@@ -1315,7 +1319,7 @@ contract('EXOToken', accounts => {
       await helpers.increaseTime(1000*24*3600);
 
       const ownerBalance = await exo.balanceOf.call(owner);
-      const expectedStakeBalance = (await exo.stakeOf.call(account)).add(ownerBalance);
+      const expectedStakeBalance = (await exo.stakeBalanceOf.call(account)).add(ownerBalance);
 
       exo.updateStakeBalance({from: account})
         .then(async result => {
@@ -1329,7 +1333,7 @@ contract('EXOToken', accounts => {
             }
           }
 
-          const stakeBalance = await exo.stakeOf.call(account);
+          const stakeBalance = await exo.stakeBalanceOf.call(account);
           assert(stakeBalance.eq(expectedStakeBalance), 'The updated stake balance should be correct');
         });
     });
@@ -1343,7 +1347,7 @@ contract('EXOToken', accounts => {
       await exo.depositStake(0, {from: account});
       await helpers.increaseTime(7*24*3600);
 
-      const expectedStakeBalance = await exo.stakeOf.call(account);
+      const expectedStakeBalance = await exo.stakeBalanceOf.call(account);
 
       exo.updateStakeBalance({from: account})
         .then(async result => {
@@ -1357,7 +1361,7 @@ contract('EXOToken', accounts => {
             }
           }
 
-          const stakeBalance = await exo.stakeOf.call(account);
+          const stakeBalance = await exo.stakeBalanceOf.call(account);
           assert(stakeBalance.eq(expectedStakeBalance), 'The updated stake balance should be unchanged');
         });
     });
@@ -1371,7 +1375,7 @@ contract('EXOToken', accounts => {
       await exo.depositStake(50*exp, {from: account});
       await helpers.increaseTime(6*24*3600);
 
-      const expectedStakeBalance = await exo.stakeOf.call(account);
+      const expectedStakeBalance = await exo.stakeBalanceOf.call(account);
 
       exo.updateStakeBalance({from: account})
         .then(async result => {
@@ -1385,7 +1389,7 @@ contract('EXOToken', accounts => {
             }
           }
 
-          const stakeBalance = await exo.stakeOf.call(account);
+          const stakeBalance = await exo.stakeBalanceOf.call(account);
           assert(stakeBalance.eq(expectedStakeBalance), 'The updated stake balance should be unchanged');
         });
     });
@@ -1397,12 +1401,12 @@ contract('EXOToken', accounts => {
       await exo.depositStake(50*exp);
       await helpers.increaseTime(7*24*3600);
 
-      const expectedStakeBalance = await exo.stakeOf.call(owner);
+      const expectedStakeBalance = await exo.stakeBalanceOf.call(owner);
 
       exo.updateStakeBalance().then(async result => {
         assert.equal(parseInt(result.receipt.status, 16), 0, 'The stake balance update should fail');
 
-        const stakeBalance = await exo.stakeOf.call(owner);
+        const stakeBalance = await exo.stakeBalanceOf.call(owner);
         assert(stakeBalance.eq(expectedStakeBalance), 'The stake balance should be unchanged');
       });
     });
@@ -2053,7 +2057,7 @@ contract('EXOToken', accounts => {
     });
   });
 
-  it('should get the staking start time of an account', () => {
+  it('should get the stake start time of an account', () => {
     return newEXOToken().then(async exo => {
       const staker = accounts[5];
       await exo.transfer(staker, 100*exp);
@@ -2062,24 +2066,67 @@ contract('EXOToken', accounts => {
       exo.depositStake(50*exp, {from: staker})
         .then(async result => {
           const now = web3.eth.getBlock(web3.eth.blockNumber).timestamp;
-          const stakingStartTime = await exo.stakingStartTimeOf.call(staker);
+          const stakeStartTime = await exo.stakeStartTimeOf.call(staker);
 
-          if (! stakingStartTime.eq(new BN(now))) {
-            console.log('BLOCK TIMESTAMP INCONSISTENCY', stakingStartTime.valueOf(), now);
+          if (! stakeStartTime.eq(new BN(now))) {
+            console.log('BLOCK TIMESTAMP INCONSISTENCY', stakeStartTime.valueOf(), now);
           }
-          const diff = stakingStartTime.sub(new BN(now)).toNumber();
-          assert(diff === -1 || diff === 0, 'The staking start time should be equal to current block time');
+          const diff = stakeStartTime.sub(new BN(now)).toNumber();
+          assert(diff === -1 || diff === 0, 'The stake start time should be equal to current block time');
+        });
+    });
+  });
+*/
+  it('should NOT transfer anything to owner account', () => {
+    return newEXOToken().then(async exo => {
+      const sender = accounts[5];
+      await exo.transfer(sender, 100*exp);
+      const expectedSenderBalance = await exo.balanceOf.call(sender);
+      const expectedOwnerBalance = await exo.balanceOf.call(owner);
+      
+      exo.transfer(owner, 50*exp, {from: sender})
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 0, 'The transfer should fail');
+
+          const senderBalance = await exo.balanceOf.call(sender);
+          const ownerBalance = await exo.balanceOf.call(owner);
+          assert(senderBalance.eq(expectedSenderBalance), 'The sender\'s balance should be unchanged');
+          assert(ownerBalance.eq(expectedOwnerBalance), 'The owner\'s balance should be unchanged');
         });
     });
   });
 
-  // it('should NOT transfer anything to owner account', () => {});
+  it('should lock the minimum balance for stake reward in owner\'s account', () => {
+    return newEXOToken().then(async exo => {
+      const account = accounts[5];
+      const surplus = (await exo.balanceOf.call(owner)).sub(MIN_BALANCE_FOR_STAKE_REWARD);
+      await exo.transfer(account, surplus.div(exp).toNumber()*exp);
 
-  // // TO DO
-  // it('should display tokens bought/total tokens available for ICO', () => {});
+      const expectedAccountBalance = await exo.balanceOf.call(account);
+      const expectedOwnerBalance = await exo.balanceOf.call(owner);
+      assert(expectedAccountBalance.eq(surplus), 'Transfer amount should be correct');
+      assert(expectedOwnerBalance.eq(MIN_BALANCE_FOR_STAKE_REWARD), 'Remaining balance should be correct');
+
+      exo.transfer(account, 1)
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 0, 'The transfer should fail');
+
+          const accountBalance = await exo.balanceOf.call(account);
+          const ownerBalance = await exo.balanceOf.call(owner);
+          assert(accountBalance.eq(expectedAccountBalance), 'The account\'s balance should be unchanged');
+          assert(ownerBalance.eq(expectedOwnerBalance), 'The owner\'s balance should be unchanged');
+        });
+    });
+  });
+
+  // it('should freeze an account requested by owner', () => {});
+  // it('should unfreeze an account requested by owner', () => {});
+  // it('should NOT freeze owner\'s account', () => {});
+  // it('should NOT freeze the same account more than once', () => {});
+  // it('should NOT unfreeze the same account more than once', () => {});
 
   // // TO BE CONSIDERED
-  // it('should freeze an account requested by owner', () => {});
+  // it('should display tokens bought/total tokens available for ICO', () => {});
   // it('should apply a transfer cap to any account requested by owner', () => {});
   // transfer cap for owner: 25,000
   // transfer cap for treasury: none
