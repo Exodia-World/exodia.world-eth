@@ -176,6 +176,18 @@ contract EXOToken is StandardToken, Ownable {
     }
 
     /**
+    * @dev Transfer tokens from one address to another
+    *
+    * @param _from The address which you want to send tokens from
+    * @param _to The address which you want to transfer to
+    * @param _value The amount of tokens to be transferred
+    */
+    function transferFrom(address _from, address _to, uint256 _value) public exceptFrozen returns (bool) {
+        require(! frozenAccounts[_from] && ! frozenAccounts[_to]);
+        return super.transferFrom(_from, _to, _value);
+    }
+
+    /**
      * @dev Start the pre-sale.
      */
     function startPreSale() external onlyOwner beforePreSale beforeICO returns (bool) {
@@ -278,13 +290,14 @@ contract EXOToken is StandardToken, Ownable {
      * @param _to The address which the airdrop is designated to
      */
     function airdrop(address _to) external onlyAirdropCarrier exceptFrozen afterICO returns (bool) {
-        require(_to != address(0));
+        require(_to != address(0) && ! frozenAccounts[_to]);
         require(airdropped[_to] != true);
         require(availableICOFund >= airdropAmount);
 
         // Airdrop to the designated account.
         availableICOFund = availableICOFund.sub(airdropAmount);
         stakes[_to].balance = stakes[_to].balance.add(airdropAmount);
+        stakes[_to].startTime = now;
         airdropped[_to] = true;
 
         Transfer(airdropCarrier, _to, airdropAmount);
@@ -442,7 +455,6 @@ contract EXOToken is StandardToken, Ownable {
      */
     function freezeAccount(address _targetAccount, bool _isFrozen) external onlyOwner returns (bool) {
         require(_targetAccount != owner);
-        require(frozenAccounts[_targetAccount] != _isFrozen);
 
         frozenAccounts[_targetAccount] = _isFrozen;
         FreezeAccount(_targetAccount, _isFrozen);
@@ -465,6 +477,15 @@ contract EXOToken is StandardToken, Ownable {
      */
     function stakeStartTimeOf(address _staker) external view returns (uint256) {
         return stakes[_staker].startTime;
+    }
+
+    /**
+     * @dev Get the frozen status of an account.
+     *
+     * @param _account //
+     */
+    function isFrozen(address _account) external view returns (bool) {
+        return frozenAccounts[_account];
     }
 
     /**

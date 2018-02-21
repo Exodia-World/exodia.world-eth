@@ -2119,17 +2119,245 @@ contract('EXOToken', accounts => {
     });
   });
 
-  // it('should freeze an account requested by owner', () => {});
-  // it('should unfreeze an account requested by owner', () => {});
-  // it('should NOT freeze owner\'s account', () => {});
-  // it('should NOT freeze the same account more than once', () => {});
-  // it('should NOT unfreeze the same account more than once', () => {});
+  it('should freeze an account requested by owner', () => {
+    return newEXOToken().then(async exo => {
+      const account = accounts[5];
+      
+      exo.freezeAccount(account, true)
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 1, 'The freeze should complete');
+
+          assert(await exo.isFrozen.call(account), 'The account should be frozen');
+        });
+    });
+  });
+
+  it('should unfreeze an account requested by owner', () => {
+    return newEXOToken().then(async exo => {
+      const account = accounts[5];
+      await exo.freezeAccount(account, true);
+
+      exo.freezeAccount(account, false)
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 1, 'The unfreeze should complete');
+
+          assert(! await exo.isFrozen.call(account), 'The account should be unfrozen');
+        });
+    });
+  });
+
+  it('should NOT freeze owner\'s account', () => {
+    return newEXOToken().then(async exo => {
+      exo.freezeAccount(owner, true)
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 0, 'The freeze should fail');
+
+          assert(! await exo.isFrozen.call(owner), 'The account should NOT be frozen');
+        });
+    });
+  });
+
+  it('should NOT freeze/unfreeze if caller is NOT owner', () => {
+    return newEXOToken().then(async exo => {
+      const account = accounts[5];
+      
+      exo.freezeAccount(account, true, {from: accounts[6]})
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 0, 'The freeze should fail');
+
+          assert(! await exo.isFrozen.call(account), 'The account should NOT be frozen');
+        });
+    });
+  });
+
+  it('should NOT be possible to transfer tokens if sender is frozen', () => {
+    return newEXOToken().then(async exo => {
+      const sender = accounts[5];
+      const recipient = accounts[6];
+      const expectedSenderBalance = await exo.balanceOf.call(sender);
+      const expectedRecipientBalance = await exo.balanceOf.call(recipient);
+
+      await exo.freezeAccount(sender, true);
+
+      exo.transfer(recipient, 100, {from: sender})
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 0, 'The transfer should fail');
+
+          const senderBalance = await exo.balanceOf.call(sender);
+          const recipientBalance = await exo.balanceOf.call(recipient);
+          assert(senderBalance.eq(expectedSenderBalance), 'The sender\'s balance should be unchanged');
+          assert(recipientBalance.eq(expectedRecipientBalance), 'The recipient\'s balance should be unchanged');
+        });
+    });
+  });
+
+  it('should NOT be possible to transfer tokens if recipient is frozen', () => {
+    return newEXOToken().then(async exo => {
+      const sender = accounts[5];
+      const recipient = accounts[6];
+      const expectedSenderBalance = await exo.balanceOf.call(sender);
+      const expectedRecipientBalance = await exo.balanceOf.call(recipient);
+
+      await exo.freezeAccount(recipient, true);
+
+      exo.transfer(recipient, 100, {from: sender})
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 0, 'The transfer should fail');
+
+          const senderBalance = await exo.balanceOf.call(sender);
+          const recipientBalance = await exo.balanceOf.call(recipient);
+          assert(senderBalance.eq(expectedSenderBalance), 'The sender\'s balance should be unchanged');
+          assert(recipientBalance.eq(expectedRecipientBalance), 'The recipient\'s balance should be unchanged');
+        });
+    });
+  });
+
+  it('should NOT be possible to transfer allowance tokens if spender is frozen', () => {
+    return newEXOToken().then(async exo => {
+      const lender = accounts[4];
+      const spender = accounts[5];
+      const recipient = accounts[6];
+      const expectedLenderBalance = await exo.balanceOf.call(lender);
+      const expectedRecipientBalance = await exo.balanceOf.call(recipient);
+
+      await exo.approve(spender, 100, {from: lender});
+      await exo.freezeAccount(spender, true);
+
+      exo.transferFrom(lender, recipient, 100, {from: spender})
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 0, 'The transfer should fail');
+
+          const lenderBalance = await exo.balanceOf.call(lender);
+          const recipientBalance = await exo.balanceOf.call(recipient);
+          assert(lenderBalance.eq(expectedLenderBalance), 'The lender\'s balance should be unchanged');
+          assert(recipientBalance.eq(expectedRecipientBalance), 'The recipient\'s balance should be unchanged');
+        });
+    });
+  });
+
+  it('should NOT be possible to transfer allowance tokens if lender is frozen', () => {
+    return newEXOToken().then(async exo => {
+      const lender = accounts[4];
+      const spender = accounts[5];
+      const recipient = accounts[6];
+      const expectedLenderBalance = await exo.balanceOf.call(lender);
+      const expectedRecipientBalance = await exo.balanceOf.call(recipient);
+
+      await exo.approve(spender, 100, {from: lender});
+      await exo.freezeAccount(lender, true);
+
+      exo.transferFrom(lender, recipient, 100, {from: spender})
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 0, 'The transfer should fail');
+
+          const lenderBalance = await exo.balanceOf.call(lender);
+          const recipientBalance = await exo.balanceOf.call(recipient);
+          assert(lenderBalance.eq(expectedLenderBalance), 'The lender\'s balance should be unchanged');
+          assert(recipientBalance.eq(expectedRecipientBalance), 'The recipient\'s balance should be unchanged');
+        });
+    });
+  });
+
+  it('should NOT be possible to transfer allowance tokens if recipient is frozen', () => {
+    return newEXOToken().then(async exo => {
+      const lender = accounts[4];
+      const spender = accounts[5];
+      const recipient = accounts[6];
+      const expectedLenderBalance = await exo.balanceOf.call(lender);
+      const expectedRecipientBalance = await exo.balanceOf.call(recipient);
+
+      await exo.approve(spender, 100, {from: lender});
+      await exo.freezeAccount(recipient, true);
+
+      exo.transferFrom(lender, recipient, 100, {from: spender})
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 0, 'The transfer should fail');
+
+          const lenderBalance = await exo.balanceOf.call(lender);
+          const recipientBalance = await exo.balanceOf.call(recipient);
+          assert(lenderBalance.eq(expectedLenderBalance), 'The lender\'s balance should be unchanged');
+          assert(recipientBalance.eq(expectedRecipientBalance), 'The recipient\'s balance should be unchanged');
+        });
+    });
+  });
+
+  it('should NOT be possible to deposit stake tokens if account is frozen', () => {
+    return newEXOToken().then(async exo => {
+      const staker = accounts[5];
+      await exo.transfer(staker, 100*exp);
+      await fastForwardToAfterICO(exo);
+      await exo.freezeAccount(staker, true);
+
+      exo.depositStake(50*exp, {from: staker})
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 0, 'The stake deposit should fail');
+        });
+    });
+  });
+
+  it('should NOT be possible to withdraw stake tokens if account is frozen', () => {
+    return newEXOToken().then(async exo => {
+      const staker = accounts[5];
+      await exo.transfer(staker, 100*exp);
+      await fastForwardToAfterICO(exo);
+      await exo.depositStake(50*exp, {from: staker});
+      await exo.freezeAccount(staker, true);
+
+      exo.withdrawStake(50*exp, {from: staker})
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 0, 'The stake withdrawal should fail');
+        });
+    });
+  });
+
+  it('should NOT be possible to buy ICO tokens if buyer is frozen', () => {
+    return newEXOToken().then(async exo => {
+      await fastForwardToAfterPreSale(exo);
+      await exo.startICO();
+
+      const buyer = accounts[6];
+      const amount = new BN(web3.toWei(MIN_ICO_TOKENS_BOUGHT_EVERY_PURCHASE.div(ICO_ETH_TO_EXO).add(new BN(1)).div(exp), "ether"));
+      await exo.freezeAccount(buyer, true);
+      
+      exo.buyICOTokens({from: buyer, value: amount})
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 0, 'EXO tokens should NOT be sold');
+        });
+    });
+  });
+
+  it('should NOT be possible to airdrop tokens if carrier is frozen', () => {
+    return newEXOToken().then(async exo => {
+      const recipient = accounts[4];
+
+      await exo.setAirdropCarrier(airdropCarrier);
+      await fastForwardToAfterICO(exo);
+      await exo.freezeAccount(airdropCarrier, true);
+
+      exo.airdrop(recipient, {from: airdropCarrier})
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 0, 'The airdrop should fail');
+          assert(await exo.airdropped(recipient) == false, 'The recipient should NOT be marked as airdropped');
+        });
+    })
+  });
+
+  it('should NOT be possible to receive airdrop tokens if account is frozen', () => {
+    return newEXOToken().then(async exo => {
+      const recipient = accounts[4];
+
+      await exo.setAirdropCarrier(airdropCarrier);
+      await fastForwardToAfterICO(exo);
+      await exo.freezeAccount(recipient, true);
+
+      exo.airdrop(recipient, {from: airdropCarrier})
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 0, 'The airdrop should fail');
+          assert(await exo.airdropped(recipient) == false, 'The recipient should NOT be marked as airdropped');
+        });
+    })
+  });
 
   // // TO BE CONSIDERED
   // it('should display tokens bought/total tokens available for ICO', () => {});
-  // it('should apply a transfer cap to any account requested by owner', () => {});
-  // transfer cap for owner: 25,000
-  // transfer cap for treasury: none
-  // transfer cap for pre-sale: none
-  // transfer cap for airdrop: 10
 });
