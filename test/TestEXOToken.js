@@ -124,7 +124,7 @@ contract('EXOToken', accounts => {
       assert(airdropAmount.eq(AIRDROP_AMOUNT), 'The airdrop amount of EXO per account should be set');
     });
   });
-/*
+
   it('should start the pre-sale', () => {
     return newEXOToken().then(async exo => {
       const preSaleDuration = await exo.preSaleDuration.call();
@@ -1311,7 +1311,7 @@ contract('EXOToken', accounts => {
   });
 
   it('should update stake balance with owner balance if owner\'s balance is insufficient', () => {
-    return newEXOToken({totalSupply: 40000101}).then(async exo => {
+    return newEXOToken({totalSupply: 40000101, minBalanceForStakeReward: 0}).then(async exo => {
       const account = accounts[5];
       await exo.transfer(account, 100*exp);
       await fastForwardToAfterICO(exo);
@@ -1541,7 +1541,7 @@ contract('EXOToken', accounts => {
   });
 
   it('should calculate interest to be exactly as owner\'s remaining balance if the balance is insufficient', () => {
-    return newEXOToken({totalSupply: 40000110}).then(async exo => {
+    return newEXOToken({totalSupply: 40000110, minBalanceForStakeReward: 0}).then(async exo => {
       const staker = accounts[5];
       await exo.transfer(staker, 100*exp);
       await fastForwardToAfterICO(exo);
@@ -1555,7 +1555,7 @@ contract('EXOToken', accounts => {
   });
 
   it('should calculate interest to be ZERO if owner\'s remaining balance is ZERO', () => {
-    return newEXOToken({totalSupply: 40000100}).then(async exo => {
+    return newEXOToken({totalSupply: 40000100, minBalanceForStakeReward: 0}).then(async exo => {
       const staker = accounts[5];
       await exo.transfer(staker, 100*exp);
       await fastForwardToAfterICO(exo);
@@ -1658,7 +1658,7 @@ contract('EXOToken', accounts => {
       await exo.setTreasuryCarrier(treasuryCarrier);
       const initialOldCarrierBalance = await exo.balanceOf.call(treasuryCarrier);
       assert(initialOldCarrierBalance.eq(LOCKED_TREASURY_FUND), 'The initial old carrier\'s balance should be correct');
-      await exo.transfer(owner, initialOldCarrierBalance.div(exp).toNumber() * exp, {from: treasuryCarrier});
+      await exo.transfer(accounts[6], initialOldCarrierBalance.div(exp).toNumber() * exp, {from: treasuryCarrier});
       const newCarrier = accounts[7];
 
       exo.setTreasuryCarrier(newCarrier)
@@ -1858,7 +1858,7 @@ contract('EXOToken', accounts => {
       await exo.setPreSaleCarrier(preSaleCarrier);
       const initialOldCarrierBalance = await exo.balanceOf.call(preSaleCarrier);
       assert(initialOldCarrierBalance.eq(LOCKED_PRESALE_FUND), 'The initial old carrier\'s balance should be correct');
-      await exo.transfer(owner, initialOldCarrierBalance.div(exp).toNumber() * exp, {from: preSaleCarrier});
+      await exo.transfer(accounts[6], initialOldCarrierBalance.div(exp).toNumber() * exp, {from: preSaleCarrier});
       const newCarrier = accounts[7];
 
       exo.setPreSaleCarrier(newCarrier)
@@ -2076,7 +2076,7 @@ contract('EXOToken', accounts => {
         });
     });
   });
-*/
+
   it('should NOT transfer anything to owner account', () => {
     return newEXOToken().then(async exo => {
       const sender = accounts[5];

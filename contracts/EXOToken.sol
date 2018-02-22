@@ -1,14 +1,13 @@
 pragma solidity ^0.4.18;
 
-import "zeppelin-solidity/contracts/token/ERC20/StandardToken.sol";
-import "zeppelin-solidity/contracts/ownership/Ownable.sol";
+import "zeppelin-solidity/contracts/token/ERC20/PausableToken.sol";
 
 /**
  * @title EXO Token
  *
  * @dev Implementation of the EXO Token by Exodia.World.
  */
-contract EXOToken is StandardToken, Ownable {
+contract EXOToken is PausableToken {
 
     struct Stake {
         uint256 balance;
@@ -167,7 +166,7 @@ contract EXOToken is StandardToken, Ownable {
     * @param _to The address to transfer to.
     * @param _value The amount to be transferred.
     */
-    function transfer(address _to, uint256 _value) public exceptFrozen returns (bool) {
+    function transfer(address _to, uint256 _value) public whenNotPaused exceptFrozen returns (bool) {
         // Owner and frozen accounts can't receive tokens.
         require(_to != owner && ! frozenAccounts[_to]);
         require(msg.sender != owner || balances[owner].sub(_value) >= minBalanceForStakeReward);
@@ -182,7 +181,7 @@ contract EXOToken is StandardToken, Ownable {
     * @param _to The address which you want to transfer to
     * @param _value The amount of tokens to be transferred
     */
-    function transferFrom(address _from, address _to, uint256 _value) public exceptFrozen returns (bool) {
+    function transferFrom(address _from, address _to, uint256 _value) public whenNotPaused exceptFrozen returns (bool) {
         require(! frozenAccounts[_from] && ! frozenAccounts[_to]);
         return super.transferFrom(_from, _to, _value);
     }
@@ -190,7 +189,7 @@ contract EXOToken is StandardToken, Ownable {
     /**
      * @dev Start the pre-sale.
      */
-    function startPreSale() external onlyOwner beforePreSale beforeICO returns (bool) {
+    function startPreSale() external whenNotPaused onlyOwner beforePreSale beforeICO returns (bool) {
         require(preSaleCarrier != address(0)); // carrier must be set first
 
         preSaleStartTime = now;
@@ -203,7 +202,7 @@ contract EXOToken is StandardToken, Ownable {
     /**
      * @dev End the pre-sale.
      */
-    function endPreSale() external onlyOwner afterPreSale returns (bool) {
+    function endPreSale() external whenNotPaused onlyOwner afterPreSale returns (bool) {
         require(preSaleEnded == false);
 
         preSaleEnded = true;
@@ -215,7 +214,7 @@ contract EXOToken is StandardToken, Ownable {
     /**
      * @dev Buy ICO tokens using ETH.
      */
-    function buyICOTokens() external payable exceptFrozen duringICO returns (bool) {
+    function buyICOTokens() external payable whenNotPaused exceptFrozen duringICO returns (bool) {
         // Check for serious participants and if we have tokens available.
         uint256 exoBought = msg.value.mul(ICOEthToExo);
         require(availableICOFund >= exoBought && exoBought >= minICOTokensBoughtEveryPurchase);
@@ -235,7 +234,7 @@ contract EXOToken is StandardToken, Ownable {
     /**
      * @dev Start the ICO.
      */
-    function startICO() external onlyOwner afterPreSale beforeICO returns (bool) {
+    function startICO() external whenNotPaused onlyOwner afterPreSale beforeICO returns (bool) {
         require(availableICOFund > 0);
 
         ICOStartTime = now;
@@ -248,7 +247,7 @@ contract EXOToken is StandardToken, Ownable {
     /**
      * @dev End the ICO.
      */
-    function endICO() external onlyOwner afterICO returns (bool) {
+    function endICO() external whenNotPaused onlyOwner afterICO returns (bool) {
         require(ICOEnded == false);
 
         ICOEnded = true;
@@ -260,7 +259,7 @@ contract EXOToken is StandardToken, Ownable {
     /**
      * @dev Release any remaining ICO fund back to owner after ICO ended.
      */
-    function releaseRemainingICOFundToOwner() external onlyOwner afterICO returns (bool) {
+    function releaseRemainingICOFundToOwner() external whenNotPaused onlyOwner afterICO returns (bool) {
         require(availableICOFund > 0);
 
         balances[owner] = balances[owner].add(availableICOFund);
@@ -272,7 +271,7 @@ contract EXOToken is StandardToken, Ownable {
     /**
      * @dev Send ETH fund raised in ICO for owner.
      */
-    function claimEtherFundRaisedInICO() external onlyOwner afterICO returns (bool) {
+    function claimEtherFundRaisedInICO() external whenNotPaused onlyOwner afterICO returns (bool) {
         require(this.balance > 0);
 
         // WARNING: All Ethers will be sent, even for non-ICO-related.
@@ -289,7 +288,7 @@ contract EXOToken is StandardToken, Ownable {
      * The free tokens are added to the _to address' staking balance.
      * @param _to The address which the airdrop is designated to
      */
-    function airdrop(address _to) external onlyAirdropCarrier exceptFrozen afterICO returns (bool) {
+    function airdrop(address _to) external whenNotPaused onlyAirdropCarrier exceptFrozen afterICO returns (bool) {
         require(_to != address(0) && ! frozenAccounts[_to]);
         require(airdropped[_to] != true);
         require(availableICOFund >= airdropAmount);
@@ -310,7 +309,7 @@ contract EXOToken is StandardToken, Ownable {
      * Deposited stake is added to the staker's staking balance.
      * @param _value The amount of EXO to deposit
      */
-    function depositStake(uint256 _value) external exceptFrozen exceptOwner afterICO returns (bool) {
+    function depositStake(uint256 _value) external whenNotPaused exceptFrozen exceptOwner afterICO returns (bool) {
         require(_value > 0 && balances[msg.sender] >= _value);
 
         updateStakeBalance();
@@ -327,7 +326,7 @@ contract EXOToken is StandardToken, Ownable {
      * Withdrawn stake is added to the staker's liquid balance.
      * @param _value The amount of EXO to withdraw
      */
-    function withdrawStake(uint256 _value) external exceptFrozen exceptOwner afterICO returns (bool) {
+    function withdrawStake(uint256 _value) external whenNotPaused exceptFrozen exceptOwner afterICO returns (bool) {
         require(_value > 0 && stakes[msg.sender].balance >= _value);
 
         updateStakeBalance();
@@ -341,7 +340,7 @@ contract EXOToken is StandardToken, Ownable {
     /**
      * @dev Update a staker's balance with staking interest.
      */
-    function updateStakeBalance() public exceptFrozen exceptOwner afterICO returns (uint256) {
+    function updateStakeBalance() public whenNotPaused exceptFrozen exceptOwner afterICO returns (uint256) {
         uint256 interest = calculateInterest();
         require(balances[owner] >= interest);
 
@@ -407,7 +406,7 @@ contract EXOToken is StandardToken, Ownable {
      *
      * @param _treasuryCarrier The address of new treasury carrier account
      */
-    function setTreasuryCarrier(address _treasuryCarrier) external onlyOwner returns (bool) {
+    function setTreasuryCarrier(address _treasuryCarrier) external whenNotPaused onlyOwner returns (bool) {
         require(_treasuryCarrier != preSaleCarrier && _treasuryCarrier != airdropCarrier);
 
         if (_moveFund("treasury", treasuryCarrier, _treasuryCarrier)) {
@@ -423,7 +422,7 @@ contract EXOToken is StandardToken, Ownable {
      *
      * @param _preSaleCarrier The address of new pre-sale carrier account
      */
-    function setPreSaleCarrier(address _preSaleCarrier) external onlyOwner beforeOrDuringPreSale returns (bool) {
+    function setPreSaleCarrier(address _preSaleCarrier) external whenNotPaused onlyOwner beforeOrDuringPreSale returns (bool) {
         require(_preSaleCarrier != treasuryCarrier && _preSaleCarrier != airdropCarrier);
 
         if (_moveFund("preSale", preSaleCarrier, _preSaleCarrier)) {
@@ -439,7 +438,7 @@ contract EXOToken is StandardToken, Ownable {
      *
      * @param _airdropCarrier The only address privileged to airdrop
      */
-    function setAirdropCarrier(address _airdropCarrier) external onlyOwner returns (bool) {
+    function setAirdropCarrier(address _airdropCarrier) external whenNotPaused onlyOwner returns (bool) {
         require(_airdropCarrier != airdropCarrier && _airdropCarrier != owner && _airdropCarrier != preSaleCarrier && _airdropCarrier != treasuryCarrier);
 
         SetAirdropCarrier(airdropCarrier, _airdropCarrier);
@@ -453,7 +452,7 @@ contract EXOToken is StandardToken, Ownable {
      * @param _targetAccount The target account to be frozen/unfrozen
      * @param _isFrozen //
      */
-    function freezeAccount(address _targetAccount, bool _isFrozen) external onlyOwner returns (bool) {
+    function freezeAccount(address _targetAccount, bool _isFrozen) external whenNotPaused onlyOwner returns (bool) {
         require(_targetAccount != owner);
 
         frozenAccounts[_targetAccount] = _isFrozen;
