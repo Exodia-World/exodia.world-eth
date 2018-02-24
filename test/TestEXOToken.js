@@ -304,6 +304,7 @@ contract('EXOToken', accounts => {
       const expectedContractBalance = web3.eth.getBalance(exo.address).add(amount);
       const expectedICOFund = (await exo.availableICOFund.call()).sub(expectedExoBought);
       const expectedICOTokensBought = (await exo.ICOTokensBought.call(buyer)).add(expectedExoBought);
+      const expectedTotalICOTokensBought = (await exo.totalICOTokensBought.call()).add(expectedExoBought);
       
       exo.buyICOTokens({from: buyer, value: amount})
         .then(async result => {
@@ -322,10 +323,12 @@ contract('EXOToken', accounts => {
           const contractBalance = web3.eth.getBalance(exo.address);
           const remainingICOFund = await exo.availableICOFund.call();
           const ICOTokensBought = await exo.ICOTokensBought.call(buyer);
+          const totalICOTokensBought = await exo.totalICOTokensBought.call();
           assert(buyerBalance.eq(expectedBuyerBalance), 'Buyer\'s balance should be correct');
           assert(contractBalance.eq(expectedContractBalance), 'Contract\'s balance should be correct');
           assert(remainingICOFund.eq(expectedICOFund), 'Remaining ICO fund should be correct');
           assert(ICOTokensBought.eq(expectedICOTokensBought), 'Total ICO tokens bought by buyer should be correct');
+          assert(totalICOTokensBought.eq(expectedTotalICOTokensBought), 'The total ICO tokens bought should be correct');
         });
     });
   });
@@ -342,6 +345,7 @@ contract('EXOToken', accounts => {
       const expectedContractBalance = web3.eth.getBalance(exo.address);
       const expectedICOFund = await exo.availableICOFund.call();
       const expectedICOTokensBought = await exo.ICOTokensBought.call(buyer);
+      const expectedTotalICOTokensBought = await exo.totalICOTokensBought.call();
 
       exo.buyICOTokens({from: buyer, value: amount})
         .then(async result => {
@@ -351,10 +355,12 @@ contract('EXOToken', accounts => {
           const contractBalance = web3.eth.getBalance(exo.address);
           const remainingICOFund = await exo.availableICOFund.call();
           const ICOTokensBought = await exo.ICOTokensBought.call(buyer);
+          const totalICOTokensBought = await exo.totalICOTokensBought.call();
           assert(buyerBalance.eq(expectedBuyerBalance), 'Buyer\'s balance should be unchanged');
           assert(contractBalance.eq(expectedContractBalance), 'Contract\'s balance should be unchanged');
           assert(remainingICOFund.eq(expectedICOFund), 'Remaining ICO fund should be unchanged');
           assert(ICOTokensBought.eq(expectedICOTokensBought), 'Total ICO tokens bought by buyer should be unchanged');
+          assert(totalICOTokensBought.eq(expectedTotalICOTokensBought), 'The total ICO tokens bought should be unchanged');
         });
     });
   });
@@ -373,6 +379,7 @@ contract('EXOToken', accounts => {
       const expectedContractBalance = web3.eth.getBalance(exo.address);
       const expectedICOFund = await exo.availableICOFund.call();
       const expectedICOTokensBought = await exo.ICOTokensBought.call(buyer);
+      const expectedTotalICOTokensBought = await exo.totalICOTokensBought.call();
 
       amount = new BN(100001);
 
@@ -384,10 +391,12 @@ contract('EXOToken', accounts => {
           const contractBalance = web3.eth.getBalance(exo.address);
           const remainingICOFund = await exo.availableICOFund.call();
           const ICOTokensBought = await exo.ICOTokensBought.call(buyer);
+          const totalICOTokensBought = await exo.totalICOTokensBought.call();
           assert(buyerBalance.eq(expectedBuyerBalance), 'Buyer\'s balance should be unchanged');
           assert(contractBalance.eq(expectedContractBalance), 'Contract\'s balance should be unchanged');
           assert(remainingICOFund.eq(expectedICOFund), 'Remaining ICO fund should be unchanged');
           assert(ICOTokensBought.eq(expectedICOTokensBought), 'Total ICO tokens bought by buyer should be unchanged');
+          assert(totalICOTokensBought.eq(expectedTotalICOTokensBought), 'The total ICO tokens bought should be unchanged');
         });
     });
   });
@@ -406,6 +415,7 @@ contract('EXOToken', accounts => {
       const expectedContractBalance = web3.eth.getBalance(exo.address);
       const expectedICOFund = await exo.availableICOFund.call();
       const expectedICOTokensBought = await exo.ICOTokensBought.call(buyer);
+      const expectedTotalICOTokensBought = await exo.totalICOTokensBought.call();
 
       exo.buyICOTokens({from: buyer, value: amount})
         .then(async result => {
@@ -415,10 +425,12 @@ contract('EXOToken', accounts => {
           const contractBalance = web3.eth.getBalance(exo.address);
           const remainingICOFund = await exo.availableICOFund.call();
           const ICOTokensBought = await exo.ICOTokensBought.call(buyer);
+          const totalICOTokensBought = await exo.totalICOTokensBought.call();
           assert(buyerBalance.eq(expectedBuyerBalance), 'Buyer\'s balance should be unchanged');
           assert(contractBalance.eq(expectedContractBalance), 'Contract\'s balance should be unchanged');
           assert(remainingICOFund.eq(expectedICOFund), 'Remaining ICO fund should be unchanged');
           assert(ICOTokensBought.eq(expectedICOTokensBought), 'Total ICO tokens bought by buyer should be unchanged');
+          assert(totalICOTokensBought.eq(expectedTotalICOTokensBought), 'The total ICO tokens bought should be unchanged');
         });
     });
   });
@@ -434,6 +446,7 @@ contract('EXOToken', accounts => {
       const expectedContractBalance = web3.eth.getBalance(exo.address);
       const expectedICOFund = await exo.availableICOFund.call();
       const expectedICOTokensBought = await exo.ICOTokensBought.call(buyer);
+      const expectedTotalICOTokensBought = await exo.totalICOTokensBought.call();
 
       exo.buyICOTokens({from: buyer, value: amount})
         .then(async result => {
@@ -443,10 +456,12 @@ contract('EXOToken', accounts => {
           const contractBalance = web3.eth.getBalance(exo.address);
           const remainingICOFund = await exo.availableICOFund.call();
           const ICOTokensBought = await exo.ICOTokensBought.call(buyer);
+          const totalICOTokensBought = await exo.totalICOTokensBought.call();
           assert(buyerBalance.eq(expectedBuyerBalance), 'Buyer\'s balance should be unchanged');
           assert(contractBalance.eq(expectedContractBalance), 'Contract\'s balance should be unchanged');
           assert(remainingICOFund.eq(expectedICOFund), 'Remaining ICO fund should be unchanged');
           assert(ICOTokensBought.eq(expectedICOTokensBought), 'Total ICO tokens bought by buyer should be unchanged');
+          assert(totalICOTokensBought.eq(expectedTotalICOTokensBought), 'The total ICO tokens bought should be unchanged');
         });
     });
   });
@@ -462,6 +477,7 @@ contract('EXOToken', accounts => {
       const expectedContractBalance = web3.eth.getBalance(exo.address);
       const expectedICOFund = await exo.availableICOFund.call();
       const expectedICOTokensBought = await exo.ICOTokensBought.call(buyer);
+      const expectedTotalICOTokensBought = await exo.totalICOTokensBought.call();
 
       exo.buyICOTokens({from: buyer, value: amount})
         .then(async result => {
@@ -471,10 +487,12 @@ contract('EXOToken', accounts => {
           const contractBalance = web3.eth.getBalance(exo.address);
           const remainingICOFund = await exo.availableICOFund.call();
           const ICOTokensBought = await exo.ICOTokensBought.call(buyer);
+          const totalICOTokensBought = await exo.totalICOTokensBought.call();
           assert(buyerBalance.eq(expectedBuyerBalance), 'Buyer\'s balance should be unchanged');
           assert(contractBalance.eq(expectedContractBalance), 'Contract\'s balance should be unchanged');
           assert(remainingICOFund.eq(expectedICOFund), 'Remaining ICO fund should be unchanged');
           assert(ICOTokensBought.eq(expectedICOTokensBought), 'Total ICO tokens bought by buyer should be unchanged');
+          assert(totalICOTokensBought.eq(expectedTotalICOTokensBought), 'The total ICO tokens bought should be unchanged');
         });
     });
   });
@@ -606,6 +624,7 @@ contract('EXOToken', accounts => {
           }
         }
         assert(await exo.ICOEnded.call(), 'The ICO should be flagged as ended');
+        assert((await exo.totalICOTokensBought.call()).eq(0), 'The total ICO tokens bought should be correct');
       });
     });
   });
@@ -2358,6 +2377,7 @@ contract('EXOToken', accounts => {
     })
   });
 
-  // // TO BE CONSIDERED
-  // it('should display tokens bought/total tokens available for ICO', () => {});
+  // // TO DO
+  // it('should burn accumulated interest if deposit fund is withdrawn before minimum stake time', () => {});
+  // it('should NOT be possible to deposit or update stake balance before minimum stake time', () => {});
 });

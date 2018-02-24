@@ -29,6 +29,7 @@ contract EXOToken is PausableToken {
 
     uint256 public initialICOFund;
     uint256 public availableICOFund;
+    uint256 public totalICOTokensBought;
     uint256 public minICOTokensBoughtEveryPurchase; // by one account for one purchase
     uint256 public maxICOTokensBought; // by one account for all purchases
     uint256 public ICOEthToExo;
@@ -203,7 +204,7 @@ contract EXOToken is PausableToken {
      * @dev End the pre-sale.
      */
     function endPreSale() external whenNotPaused onlyOwner afterPreSale returns (bool) {
-        require(preSaleEnded == false);
+        require(! preSaleEnded);
 
         preSaleEnded = true;
 
@@ -220,12 +221,13 @@ contract EXOToken is PausableToken {
         require(availableICOFund >= exoBought && exoBought >= minICOTokensBoughtEveryPurchase);
 
         // Whales check!
-        uint256 totalICOTokensBought = ICOTokensBought[msg.sender].add(exoBought);
-        require(totalICOTokensBought <= maxICOTokensBought);
+        uint256 totalICOTokensBoughtByAccount = ICOTokensBought[msg.sender].add(exoBought);
+        require(totalICOTokensBoughtByAccount <= maxICOTokensBought);
 
         availableICOFund = availableICOFund.sub(exoBought);
         balances[msg.sender] = balances[msg.sender].add(exoBought);
-        ICOTokensBought[msg.sender] = totalICOTokensBought;
+        ICOTokensBought[msg.sender] = totalICOTokensBoughtByAccount;
+        totalICOTokensBought = totalICOTokensBought.add(exoBought);
 
         Transfer(this, msg.sender, exoBought);
         return true;
@@ -248,11 +250,12 @@ contract EXOToken is PausableToken {
      * @dev End the ICO.
      */
     function endICO() external whenNotPaused onlyOwner afterICO returns (bool) {
-        require(ICOEnded == false);
+        require(! ICOEnded);
 
         ICOEnded = true;
+        assert(totalICOTokensBought == initialICOFund.sub(availableICOFund));
 
-        EndICO(ICOStartTime, ICODeadline, initialICOFund.sub(availableICOFund));
+        EndICO(ICOStartTime, ICODeadline, totalICOTokensBought);
         return true;
     }
 
