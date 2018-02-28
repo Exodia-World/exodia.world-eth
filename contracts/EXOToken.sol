@@ -332,7 +332,12 @@ contract EXOToken is PausableToken {
     function withdrawStake(uint256 _value) external whenNotPaused exceptFrozen exceptOwner afterICO returns (bool) {
         require(_value > 0 && stakes[msg.sender].balance >= _value);
 
-        updateStakeBalance();
+        // No reward if staking has not been for at least 21 days.
+        if (now.sub(stakes[msg.sender].startTime) >= 21 days) {
+            updateStakeBalance();
+        } else {
+            stakes[msg.sender].startTime = now; // re-stake balance even if no reward
+        }
         stakes[msg.sender].balance = stakes[msg.sender].balance.sub(_value);
         balances[msg.sender] = balances[msg.sender].add(_value);
 
@@ -344,6 +349,9 @@ contract EXOToken is PausableToken {
      * @dev Update a staker's balance with staking interest.
      */
     function updateStakeBalance() public whenNotPaused exceptFrozen exceptOwner afterICO returns (uint256) {
+        // Has the staking been for at least 21 days?
+        require(now.sub(stakes[msg.sender].startTime) >= 21 days);
+
         uint256 interest = calculateInterest();
         require(balances[owner] >= interest);
 

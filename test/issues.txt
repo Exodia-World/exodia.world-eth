@@ -1,0 +1,10 @@
+Contract: EXOToken should calculate interest correctly if staking ranges from one interest period to the next:
+AssertionError: The interest should be correct
+  at newEXOToken.then (test/TestEXOToken.js:1550:7)
+  
+--FAILED INTEREST CALCULATION--
+randomDays=53445
+firstEligibleStakingDays=1092
+secondEligibleStakingDays=52353
+expectedTotalInterest=373541095890410958903
+interest=373493150684931506848

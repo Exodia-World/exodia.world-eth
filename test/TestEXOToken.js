@@ -124,7 +124,7 @@ contract('EXOToken', accounts => {
       assert(airdropAmount.eq(AIRDROP_AMOUNT), 'The airdrop amount of EXO per account should be set');
     });
   });
-
+  
   it('should start the pre-sale', () => {
     return newEXOToken().then(async exo => {
       const preSaleDuration = await exo.preSaleDuration.call();
@@ -998,7 +998,7 @@ contract('EXOToken', accounts => {
     });
   });
 
-  it('should deposit stake with ZERO interest applied if the staking is NOT for at least 7 days since last start time', () => {
+  it('should deposit stake with ZERO interest applied if it is the first deposit', () => {
     return newEXOToken().then(async exo => {
       const account = accounts[5];
       await exo.transfer(account, 100*exp);
@@ -1034,7 +1034,7 @@ contract('EXOToken', accounts => {
       await exo.transfer(account, 100*exp);
       await fastForwardToAfterICO(exo);
       await exo.depositStake(50*exp, {from: account});
-      await helpers.increaseTime(7*24*3600);
+      await helpers.increaseTime(21*24*3600);
 
       const deposit = (new BN(50)).mul(exp);
       const expectedInterest = await exo.calculateInterest.call({from: account});
@@ -1056,6 +1056,29 @@ contract('EXOToken', accounts => {
           const stakeBalance = await exo.stakeBalanceOf.call(account);
           assert(balance.eq(expectedBalance), 'The staker\'s balance should be correct');
           assert(stakeBalance.eq(expectedStakeBalance), 'The staker\'s stake balance should be correct');
+        });
+    });
+  });
+
+  it('should NOT deposit stake if staking is NOT for at least 21 days since last start time', () => {
+    return newEXOToken().then(async exo => {
+      const account = accounts[5];
+      await exo.transfer(account, 100*exp);
+      await fastForwardToAfterICO(exo);
+      await exo.depositStake(50*exp, {from: account});
+      await helpers.increaseTime(7*24*3600);
+
+      const expectedBalance = await exo.balanceOf.call(account);
+      const expectedStakeBalance = await exo.stakeBalanceOf.call(account);
+
+      exo.depositStake(20*exp, {from: account})
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 0, 'The stake deposit should fail');
+
+          const balance = await exo.balanceOf.call(account);
+          const stakeBalance = await exo.stakeBalanceOf.call(account);
+          assert(balance.eq(expectedBalance), 'The staker\'s balance should be unchanged');
+          assert(stakeBalance.eq(expectedStakeBalance), 'The staker\'s stake balance should be unchanged');
         });
     });
   });
@@ -1173,43 +1196,13 @@ contract('EXOToken', accounts => {
     });
   });
 
-  it('should withdraw stake with ZERO interest applied if the staking is NOT for at least 7 days since last start time', () => {
-    return newEXOToken().then(async exo => {
-      const account = accounts[5];
-      await exo.transfer(account, 100*exp);
-      await fastForwardToAfterICO(exo);
-      await exo.depositStake(50*exp, {from: account});
-
-      const withdrawal = (new BN(20)).mul(exp);
-      const expectedBalance = (await exo.balanceOf.call(account)).add(withdrawal);
-      const expectedStakeBalance = (await exo.stakeBalanceOf.call(account)).sub(withdrawal);
-
-      exo.withdrawStake(20*exp, {from: account})
-        .then(async result => {
-          assert.equal(parseInt(result.receipt.status, 16), 1, 'The stake withdrawal should complete');
-
-          for (let i = 0; i < result.logs.length; i++) {
-            const log = result.logs[i];
-            if (log.event === 'WithdrawStake') {
-              assert.equal(log.args.staker, account, 'The stake should be withdrawn by staker');
-              assert(log.args.value.div(exp).eq(new BN(20)), 'The stake value should be 20 tokens');
-            }
-          }
-          const balance = await exo.balanceOf.call(account);
-          const stakeBalance = await exo.stakeBalanceOf.call(account);
-          assert(balance.eq(expectedBalance), 'The staker\'s balance should be 20 tokens more');
-          assert(stakeBalance.eq(expectedStakeBalance), 'The staker\'s stake balance should be 20 tokens less');
-        });
-    });
-  });
-
   it('should withdraw stake with interest applied to current stake', () => {
     return newEXOToken().then(async exo => {
       const account = accounts[5];
       await exo.transfer(account, 100*exp);
       await fastForwardToAfterICO(exo);
       await exo.depositStake(50*exp, {from: account});
-      await helpers.increaseTime(7*24*3600);
+      await helpers.increaseTime(21*24*3600);
 
       const withdrawal = (new BN(20)).mul(exp);
       const expectedInterest = await exo.calculateInterest.call({from: account});
@@ -1234,6 +1227,38 @@ contract('EXOToken', accounts => {
         });
     });
   });
+
+  it('should burn accumulated interest if deposited fund is withdrawn before 21 days have passed since last start time', () => {
+    return newEXOToken().then(async exo => {
+      const account = accounts[5];
+      await exo.transfer(account, 100*exp);
+      await fastForwardToAfterICO(exo);
+      await exo.depositStake(50*exp, {from: account});
+      await helpers.increaseTime(20*24*3600);
+
+      const withdrawal = (new BN(20)).mul(exp);
+      const expectedBalance = (await exo.balanceOf.call(account)).add(withdrawal);
+      const expectedStakeBalance = (await exo.stakeBalanceOf.call(account)).sub(withdrawal);
+
+      exo.withdrawStake(20*exp, {from: account})
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 1, 'The stake withdrawal should complete');
+
+          for (let i = 0; i < result.logs.length; i++) {
+            const log = result.logs[i];
+            if (log.event === 'WithdrawStake') {
+              assert.equal(log.args.staker, account, 'The stake should be withdrawn by staker');
+              assert(log.args.value.div(exp).eq(new BN(20)), 'The published stake value should be 20 tokens');
+            }
+          }
+          const balance = await exo.balanceOf.call(account);
+          const stakeBalance = await exo.stakeBalanceOf.call(account);
+          assert(balance.eq(expectedBalance), 'The staker\'s balance should be 20 tokens more');
+          assert(stakeBalance.eq(expectedStakeBalance), 'The staker\'s stake balance should be correct');
+        });
+    });
+  });
+
 
   it('should NOT withdraw stake if stake balance is insufficient', () => {
     return newEXOToken().then(async exo => {
@@ -1287,7 +1312,7 @@ contract('EXOToken', accounts => {
       await exo.transfer(account, 100*exp);
       await fastForwardToAfterICO(exo);
       await exo.depositStake(50*exp, {from: account});
-      await helpers.increaseTime(7*24*3600);
+      await helpers.increaseTime(21*24*3600);
 
       const expectedInterest = await exo.calculateInterest.call({from: account});
       const expectedStakeBalance = (await exo.stakeBalanceOf.call(account)).add(expectedInterest);
@@ -1310,12 +1335,32 @@ contract('EXOToken', accounts => {
     });
   });
 
+  it('should NOT update stake balance if staking is NOT for at least 21 days since last start time', () => {
+    return newEXOToken().then(async exo => {
+      const account = accounts[5];
+      await exo.transfer(account, 100*exp);
+      await fastForwardToAfterICO(exo);
+      await exo.depositStake(50*exp, {from: account});
+      await helpers.increaseTime(20*24*3600);
+
+      const expectedStakeBalance = await exo.stakeBalanceOf.call(account);
+
+      exo.updateStakeBalance({from: account})
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 0, 'The stake balance update should fail');
+
+          const stakeBalance = await exo.stakeBalanceOf.call(account);
+          assert(stakeBalance.eq(expectedStakeBalance), 'The staker\'s stake balance should be unchanged');
+        });
+    });
+  });
+
   it('should NOT update stake balance with interest if ICO has NOT ended', () => {
     return newEXOToken().then(async exo => {
       const account = accounts[5];
       await exo.transfer(account, 100*exp);
       await exo.depositStake(50*exp, {from: account});
-      await helpers.increaseTime(7*24*3600);
+      await helpers.increaseTime(21*24*3600);
 
       const expectedStakeBalance = await exo.stakeBalanceOf.call(account);
 
@@ -1364,35 +1409,7 @@ contract('EXOToken', accounts => {
       await exo.transfer(account, 100*exp);
       await fastForwardToAfterICO(exo);
       await exo.depositStake(0, {from: account});
-      await helpers.increaseTime(7*24*3600);
-
-      const expectedStakeBalance = await exo.stakeBalanceOf.call(account);
-
-      exo.updateStakeBalance({from: account})
-        .then(async result => {
-          assert.equal(parseInt(result.receipt.status, 16), 1, 'The stake balance update should complete');
-
-          for (let i = 0; i < result.logs.length; i++) {
-            const log = result.logs[i];
-            if (log.event === 'UpdateStakeBalance') {
-              assert.equal(log.args.staker, account, 'The staker account should be correct');
-              assert(log.args.balance.eq(expectedStakeBalance), 'The published stake balance should be correct');
-            }
-          }
-
-          const stakeBalance = await exo.stakeBalanceOf.call(account);
-          assert(stakeBalance.eq(expectedStakeBalance), 'The updated stake balance should be unchanged');
-        });
-    });
-  });
-
-  it('should update stake balance with ZERO interest if the staking is NOT for at least 7 days since last start time', () => {
-    return newEXOToken().then(async exo => {
-      const account = accounts[5];
-      await exo.transfer(account, 100*exp);
-      await fastForwardToAfterICO(exo);
-      await exo.depositStake(50*exp, {from: account});
-      await helpers.increaseTime(6*24*3600);
+      await helpers.increaseTime(21*24*3600);
 
       const expectedStakeBalance = await exo.stakeBalanceOf.call(account);
 
@@ -1418,7 +1435,7 @@ contract('EXOToken', accounts => {
     return newEXOToken().then(async exo => {
       await fastForwardToAfterICO(exo);
       await exo.depositStake(50*exp);
-      await helpers.increaseTime(7*24*3600);
+      await helpers.increaseTime(21*24*3600);
 
       const expectedStakeBalance = await exo.stakeBalanceOf.call(owner);
 
@@ -2376,8 +2393,4 @@ contract('EXOToken', accounts => {
         });
     })
   });
-
-  // // TO DO
-  // it('should burn accumulated interest if deposit fund is withdrawn before minimum stake time', () => {});
-  // it('should NOT be possible to deposit or update stake balance before minimum stake time', () => {});
 });
