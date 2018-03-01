@@ -2393,4 +2393,9 @@ contract('EXOToken', accounts => {
         });
     })
   });
+
+  // TODO
+  // it('should selfdestruct if killed by owner', () => {});
+  // External functions should be non-reentrant.
+  // Token should be upgradeable.
 });
