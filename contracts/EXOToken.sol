@@ -1,13 +1,14 @@
 pragma solidity ^0.4.18;
 
 import "zeppelin-solidity/contracts/token/ERC20/PausableToken.sol";
+import "./EXOBase.sol";
 
 /**
  * @title EXO Token
  *
  * @dev Implementation of the EXO Token by Exodia.World.
  */
-contract EXOToken is PausableToken {
+contract EXOToken is EXOBase, PausableToken {
 
     struct Stake {
         uint256 balance;
@@ -77,6 +78,7 @@ contract EXOToken is PausableToken {
      * @param _airdropAmount The airdrop amount for a single account
      */
     function EXOToken(
+        address _exoStorageAddress,
         uint256 _totalSupply,
         uint256 _minBalanceForStakeReward,
         uint256 _lockedTreasuryFund,
@@ -89,7 +91,7 @@ contract EXOToken is PausableToken {
         uint256 _ICOEthToExo,
         uint256 _ICODuration,
         uint256 _airdropAmount
-    ) public
+    ) EXOBase(_exoStorageAddress) public
     {
         totalSupply_ = _totalSupply.mul(uint(10)**decimals);
         minBalanceForStakeReward = _minBalanceForStakeReward.mul(uint(10)**decimals);
