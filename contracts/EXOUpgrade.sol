@@ -3,15 +3,20 @@ pragma solidity 0.4.18;
 import "./EXOBase.sol";
 import "./EXOStorage.sol";
 
+/**
+ * @title EXO Upgrade
+ *
+ * @dev Allow upgrades on EXO contracts.
+ */
 contract EXOUpgrade is EXOBase {
-    event ContractUpgraded (address indexed _oldContractAddress, address indexed _newContractAddress, uint256 createdAt);
+    event ContractUpgraded(address indexed _oldContractAddress, address indexed _newContractAddress, uint256 createdAt);
 
     /**
      * @dev Initialize EXOUpgrade.
      *
      * @param _exoStorageAddress The eternal storage address of network
      */
-    function EXOUpgrade(address _exoStorageAddress) EXOBase(_exoStorageAddress) public {
+    function EXOUpgrade(address _exoStorageAddress) EXOBase("EXOUpgrade", _exoStorageAddress) public {
         version = 1;
     }
 
@@ -22,7 +27,12 @@ contract EXOUpgrade is EXOBase {
      * @param _upgradedContractAddress The new contract's address that will replace the current one
      * @param _forceEther Force the upgrade even if this contract has ether in it
      */
-    function upgradeContract(string _name, address _upgradedContractAddress, bool _forceEther) onlyOwner external {
+    function upgradeContract(
+        string _name,
+        address _upgradedContractAddress,
+        bool _forceEther
+    ) external onlyLatestVersionOf(this) onlyOwner
+    {
         // Get the current contract's address and check if it exists.
         address oldContractAddress = exoStorage.getAddress(keccak256("contract.name", _name));
         require(oldContractAddress != 0x0);

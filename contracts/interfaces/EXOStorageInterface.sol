@@ -1,5 +1,10 @@
 pragma solidity 0.4.18;
 
+/**
+ * @title EXO Storage's Interface
+ *
+ * @dev An interface for the EXOStorage contract.
+ */
 contract EXOStorageInterface {
     // Modifiers
     modifier onlyLatestNetworkContract() {_;}

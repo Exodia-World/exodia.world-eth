@@ -91,7 +91,7 @@ contract EXOToken is EXOBase, PausableToken {
         uint256 _ICOEthToExo,
         uint256 _ICODuration,
         uint256 _airdropAmount
-    ) EXOBase(_exoStorageAddress) public
+    ) EXOBase("EXOToken", _exoStorageAddress) public
     {
         totalSupply_ = _totalSupply.mul(uint(10)**decimals);
         minBalanceForStakeReward = _minBalanceForStakeReward.mul(uint(10)**decimals);
@@ -123,34 +123,42 @@ contract EXOToken is EXOBase, PausableToken {
         require(msg.sender != owner);
         _;
     }
+
     modifier onlyAirdropCarrier() {
         require(msg.sender == airdropCarrier);
         _;
     }
+
     modifier beforePreSale() {
         require(preSaleStartTime == 0 && preSaleDeadline == 0);
         _;
     }
+
     modifier afterPreSale() {
         require(preSaleStartTime > 0 && preSaleDeadline < now);
         _;
     }
+
     modifier beforeOrDuringPreSale() {
         require((preSaleStartTime == 0 && preSaleDeadline == 0) || (preSaleStartTime > 0 && preSaleStartTime <= now && preSaleDeadline >= now));
         _;
     }
+
     modifier beforeICO() {
         require(ICOStartTime == 0 && ICODeadline == 0);
         _;
     }
+
     modifier duringICO() {
         require(ICOStartTime > 0 && ICOStartTime <= now && ICODeadline >= now);
         _;
     }
+
     modifier afterICO() {
         require(ICOStartTime > 0 && ICODeadline < now);
         _;
     }
+
     modifier exceptFrozen() {
         require(! frozenAccounts[msg.sender]);
         _;
@@ -164,11 +172,11 @@ contract EXOToken is EXOBase, PausableToken {
     }
 
     /**
-    * @dev Transfer token for a specified address
-    *
-    * @param _to The address to transfer to.
-    * @param _value The amount to be transferred.
-    */
+     * @dev Transfer token for a specified address
+     *
+     * @param _to The address to transfer to.
+     * @param _value The amount to be transferred.
+     */
     function transfer(address _to, uint256 _value) public whenNotPaused exceptFrozen returns (bool) {
         // Owner and frozen accounts can't receive tokens.
         require(_to != owner && ! frozenAccounts[_to]);
@@ -178,12 +186,12 @@ contract EXOToken is EXOBase, PausableToken {
     }
 
     /**
-    * @dev Transfer tokens from one address to another
-    *
-    * @param _from The address which you want to send tokens from
-    * @param _to The address which you want to transfer to
-    * @param _value The amount of tokens to be transferred
-    */
+     * @dev Transfer tokens from one address to another
+     *
+     * @param _from The address which you want to send tokens from
+     * @param _to The address which you want to transfer to
+     * @param _value The amount of tokens to be transferred
+     */
     function transferFrom(address _from, address _to, uint256 _value) public whenNotPaused exceptFrozen returns (bool) {
         require(! frozenAccounts[_from] && ! frozenAccounts[_to]);
         return super.transferFrom(_from, _to, _value);

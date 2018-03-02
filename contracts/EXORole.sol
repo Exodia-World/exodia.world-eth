@@ -3,100 +3,65 @@ pragma solidity 0.4.18;
 import "./EXOBase.sol";
 import "./interfaces/EXOStorageInterface.sol";
 
+/**
+ * @title EXO Role
+ *
+ * @dev Allow role-based access on EXO contracts.
+ */
 contract EXORole is EXOBase {
-     /*** Events **************/
+    event RoleAdded(string _roleName, address _address);
+    event RoleRemoved(string _roleName, address _address);
+    event OwnershipTransferred(address indexed _previousOwner, address indexed _newOwner);
 
-    event RoleAdded(
-        string _roleName, 
-        address _address
-    );
-
-    event RoleRemoved(
-        string _roleName, 
-        address _address
-    );
-
-    event OwnershipTransferred(
-        address indexed _previousOwner, 
-        address indexed _newOwner
-    );
-
-
-    /*** Modifiers ************/
-
-    /// @dev Only allow access from the latest version of the EXORole contract
-    modifier onlyLatestEXORole() {
-        require(address(this) == exoStorage.getAddress(keccak256("contract.name", "exoRole")));
-        _;
-    }
-  
-    /*** Constructor **********/
-   
-    /// @dev constructor
-    function EXORole(address _exoStorageAddress) EXOBase(_exoStorageAddress) public {
-        // Set the version
+    function EXORole(address _exoStorageAddress) EXOBase("EXORole", _exoStorageAddress) public {
         version = 1;
     }
 
-     /**
-    * @dev Allows the current owner to transfer control of the contract to a newOwner.
-    * @param _newOwner The address to transfer ownership to.
-    */
-    function transferOwnership(address _newOwner) public onlyLatestEXORole onlyOwner {
-        // Legit address?
+    /**
+     * @dev Allows the current owner to transfer control of the contract to a newOwner.
+     *
+     * @param _newOwner The address to transfer ownership to
+     */
+    function transferOwnership(address _newOwner) public onlyLatestVersionOf(this) onlyOwner {
         require(_newOwner != 0x0);
-        // Check the role exists 
-        roleCheck("owner", msg.sender);
-        // Remove current role
+        roleCheck("owner", msg.sender); // check if the role exists 
+
         exoStorage.deleteBool(keccak256("access.role", "owner", msg.sender));
-        // Add new owner
         exoStorage.setBool(keccak256("access.role",  "owner", _newOwner), true);
     }
 
-
-    /**** Admin Role Methods ***********/
-
-
-   /**
-   * @dev Give an address access to this role
-   */
-    function adminRoleAdd(string _role, address _address) onlyLatestEXORole onlySuperUser public {
-        roleAdd(_role, _address);
+    /**
+     * @dev Give an address' access to this role.
+     */
+    function roleAdd(string _role, address _address) public onlyLatestVersionOf(this) onlySuperUser {
+        _roleAdd(_role, _address);
     }
 
     /**
-   * @dev Remove an address access to this role
-   */
-    function adminRoleRemove(string _role, address _address) onlyLatestEXORole onlySuperUser public {
-        roleRemove(_role, _address);
+     * @dev Remove an address' access to this role.
+     */
+    function roleRemove(string _role, address _address) public onlyLatestVersionOf(this) onlySuperUser {
+        _roleRemove(_role, _address);
     }
 
-
-    /**** Internal Role Methods ***********/
-   
     /**
-   * @dev Give an address access to this role
-   */
-    function roleAdd(string _role, address _address) internal {
-        // Legit address?
+     * @dev Give an address' access to this role.
+     */
+    function _roleAdd(string _role, address _address) internal {
         require(_address != 0x0);
-        // Only one owner to rule them all
-        require(keccak256(_role) != keccak256("owner"));
-        // Add it
+        require(keccak256(_role) != keccak256("owner")); // only one owner to rule them all
+
         exoStorage.setBool(keccak256("access.role", _role, _address), true);
-        // Log it
         RoleAdded(_role, _address);
     }
 
     /**
-    * @dev Remove an address' access to this role
-    */
-    function roleRemove(string _role, address _address) internal {
-        // Only an owner can transfer their access
-        require(!roleHas("owner", _address));
-        // Remove from storage
+     * @dev Remove an address' access to this role.
+     */
+    function _roleRemove(string _role, address _address) internal {
+        require(!roleHas("owner", _address)); // only an owner can transfer its access
+
         exoStorage.deleteBool(keccak256("access.role", _role, _address));
-        // Log it
         RoleRemoved(_role, _address);
     }
 }

@@ -1,5 +1,10 @@
 pragma solidity 0.4.18;
 
+/**
+ * @title EXO Eternal Storage
+ *
+ * @dev Responsible for data storage and address resolution for other EXO contracts.
+ */
 contract EXOStorage {
     mapping(bytes32 => uint256) private uIntStorage;
     mapping(bytes32 => string) private stringStorage;
@@ -26,7 +31,7 @@ contract EXOStorage {
         boolStorage[keccak256("access.role", "owner", msg.sender)] = true;
     }
 
-    /**** Get Methods ***********/
+    /* Get Methods */ 
 
     function getAddress(bytes32 _key) external view returns (address) {
         return addressStorage[_key];
@@ -52,55 +57,55 @@ contract EXOStorage {
         return intStorage[_key];
     }
 
-    /**** Set Methods ***********/
+    /* Set Methods */
 
-    function setAddress(bytes32 _key, address _value) onlyLatestNetworkContract external {
+    function setAddress(bytes32 _key, address _value) external onlyLatestNetworkContract {
         addressStorage[_key] = _value;
     }
 
-    function setUint(bytes32 _key, uint _value) onlyLatestNetworkContract external {
+    function setUint(bytes32 _key, uint _value) external onlyLatestNetworkContract {
         uIntStorage[_key] = _value;
     }
 
-    function setString(bytes32 _key, string _value) onlyLatestNetworkContract external {
+    function setString(bytes32 _key, string _value) external onlyLatestNetworkContract {
         stringStorage[_key] = _value;
     }
 
-    function setBytes(bytes32 _key, bytes _value) onlyLatestNetworkContract external {
+    function setBytes(bytes32 _key, bytes _value) external onlyLatestNetworkContract {
         bytesStorage[_key] = _value;
     }
     
-    function setBool(bytes32 _key, bool _value) onlyLatestNetworkContract external {
+    function setBool(bytes32 _key, bool _value) external onlyLatestNetworkContract {
         boolStorage[_key] = _value;
     }
     
-    function setInt(bytes32 _key, int _value) onlyLatestNetworkContract external {
+    function setInt(bytes32 _key, int _value) external onlyLatestNetworkContract {
         intStorage[_key] = _value;
     }
 
-    /**** Delete Methods ***********/
+    /* Delete Methods */
     
-    function deleteAddress(bytes32 _key) onlyLatestNetworkContract external {
+    function deleteAddress(bytes32 _key) external onlyLatestNetworkContract {
         delete addressStorage[_key];
     }
 
-    function deleteUint(bytes32 _key) onlyLatestNetworkContract external {
+    function deleteUint(bytes32 _key) external onlyLatestNetworkContract {
         delete uIntStorage[_key];
     }
 
-    function deleteString(bytes32 _key) onlyLatestNetworkContract external {
+    function deleteString(bytes32 _key) external onlyLatestNetworkContract {
         delete stringStorage[_key];
     }
 
-    function deleteBytes(bytes32 _key) onlyLatestNetworkContract external {
+    function deleteBytes(bytes32 _key) external onlyLatestNetworkContract {
         delete bytesStorage[_key];
     }
     
-    function deleteBool(bytes32 _key) onlyLatestNetworkContract external {
+    function deleteBool(bytes32 _key) external onlyLatestNetworkContract {
         delete boolStorage[_key];
     }
     
-    function deleteInt(bytes32 _key) onlyLatestNetworkContract external {
+    function deleteInt(bytes32 _key) external onlyLatestNetworkContract {
         delete intStorage[_key];
     }
 }
