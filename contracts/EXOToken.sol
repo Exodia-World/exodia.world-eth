@@ -19,26 +19,16 @@ contract EXOToken is PausableToken {
     string public name = "EXO";
     string public symbol = "EXO";
     uint8 public decimals = 18;
+    uint256 public minBalanceForStakeReward;
 
-    EXORole private exoRole = EXORole(0);
+    uint256 public constant PRESALE_ETH_TO_EXO = 7300;
+    uint256 public preSaleDuration; // in seconds
 
-    address public preSaleCarrier;
-    uint256 public preSaleEthToExo;
-    uint256 public preSaleStartTime;
-    uint256 public preSaleDuration;
-    uint256 public preSaleDeadline;
-    bool public preSaleEnded = false;
-
+    uint256 public ICO_ETH_TO_EXO = 3650;
+    uint256 public ICODuration; // in seconds
     uint256 public initialICOFund;
-    uint256 public availableICOFund;
-    uint256 public totalICOTokensBought;
     uint256 public minICOTokensBoughtEveryPurchase; // by one account for one purchase
     uint256 public maxICOTokensBought; // by one account for all purchases
-    uint256 public ICOEthToExo;
-    uint256 public ICOStartTime;
-    uint256 public ICODuration; // in seconds
-    uint256 public ICODeadline; // ICOStartTime + ICODuration
-    bool public ICOEnded = false;
 
     uint256 public airdropAmount;
     address public airdropCarrier;
@@ -49,10 +39,10 @@ contract EXOToken is PausableToken {
     mapping (address => Stake) public stakes;
     mapping (address => bool) public frozenAccounts;
 
+    EXORole private exoRole = EXORole(0);
+
     event StartPreSale(uint256 indexed startTime, uint256 indexed deadline);
-    event EndPreSale(uint256 indexed startTime, uint256 indexed deadline, uint256 remainingPreSaleFund);
     event StartICO(uint256 indexed startTime, uint256 indexed deadline);
-    event EndICO(uint256 indexed startTime, uint256 indexed deadline, uint256 totalICOTokensBought);
     event TransferETH(address indexed from, address indexed to, uint256 value);
     event DepositStake(address indexed staker, uint256 indexed value);
     event WithdrawStake(address indexed staker, uint256 indexed value);
@@ -69,50 +59,43 @@ contract EXOToken is PausableToken {
      * @param _minBalanceForStakeReward The minimum balance required for stake reward
      * @param _lockedTreasuryFund Locked treasury fund, only handed to its carrier account
      * @param _lockedPreSaleFund Locked pre-sale fund, only handed to its carrier account
-     * @param _preSaleEthToExo The exchange rate at pre-sale -- from ETH to EXO
      * @param _preSaleDuration The duration of pre-sale period in seconds
      * @param _availableICOFund Total amount of tokens that can be bought in ICO
      * @param _minICOTokensBoughtEveryPurchase The minimum amount of ICO tokens that must be bought by one account for every purchase
      * @param _maxICOTokensBought The maximum amount of ICO tokens that can be bought by one account for all purchases
-     * @param _ICOEthToExo The exchange rate at ICO -- from ETH to EXO
      * @param _ICODuration The duration of ICO
      * @param _airdropAmount The airdrop amount for a single account
      */
     function EXOToken(
         address _exoStorageAddress,
-        address _exoRoleAddress,
         uint256 _totalSupply,
         uint256 _minBalanceForStakeReward,
         uint256 _lockedTreasuryFund,
         uint256 _lockedPreSaleFund,
-        uint256 _preSaleEthToExo,
         uint256 _preSaleDuration,
+        uint256 _ICODuration,
         uint256 _availableICOFund,
         uint256 _minICOTokensBoughtEveryPurchase,
         uint256 _maxICOTokensBought,
-        uint256 _ICOEthToExo,
-        uint256 _ICODuration,
         uint256 _airdropAmount
     ) EXOBase("EXOToken", _exoStorageAddress) public
     {
-        exoRole = EXORole(_exoRoleAddress);
+        exoRole = EXORole(exoStorage.getAddress(keccak256("contract.name", "EXORole")));
 
         bool _isUpgrade = exoStorage.getBool(keccak256("contract.storage.initialized"));
         if (_isUpgrade == false) {
             totalSupply(_totalSupply.mul(uint(10)**decimals));
-            minBalanceForStakeReward(_minBalanceForStakeReward.mul(uint(10)**decimals));
+            minBalanceForStakeReward= _minBalanceForStakeReward.mul(uint(10)**decimals));
 
             lockedFunds["treasury"] = _lockedTreasuryFund.mul(uint(10)**decimals);
             lockedFunds["preSale"] = _lockedPreSaleFund.mul(uint(10)**decimals);
-            preSaleEthToExo = _preSaleEthToExo;
             preSaleDuration = _preSaleDuration;
 
-            availableICOFund = _availableICOFund.mul(uint(10)**decimals);
-            initialICOFund = availableICOFund;
+            ICODuration = _ICODuration;
+            availableICOFund(_availableICOFund.mul(uint(10)**decimals));
+            initialICOFund = availableICOFund();
             minICOTokensBoughtEveryPurchase = _minICOTokensBoughtEveryPurchase.mul(uint(10)**decimals);
             maxICOTokensBought = _maxICOTokensBought.mul(uint(10)**decimals);
-            ICOEthToExo = _ICOEthToExo;
-            ICODuration = _ICODuration;
 
             airdropAmount = _airdropAmount.mul(uint(10)**decimals);
 
@@ -120,9 +103,9 @@ contract EXOToken is PausableToken {
             balances[msg.sender] = totalSupply_
                 .sub(lockedFunds["treasury"])
                 .sub(lockedFunds["preSale"])
-                .sub(availableICOFund);
+                .sub(availableICOFund());
 
-            assert(balances[msg.sender] >= minBalanceForStakeReward());
+            assert(balances[msg.sender] >= minBalanceForStakeReward);
         }
     }
 
@@ -137,32 +120,32 @@ contract EXOToken is PausableToken {
     }
 
     modifier beforePreSale() {
-        require(preSaleStartTime == 0 && preSaleDeadline == 0);
+        require(preSaleStartTime() == 0 && preSaleDeadline() == 0);
         _;
     }
 
     modifier afterPreSale() {
-        require(preSaleStartTime > 0 && preSaleDeadline < now);
+        require(preSaleStartTime() > 0 && preSaleDeadline() < now);
         _;
     }
 
     modifier beforeOrDuringPreSale() {
-        require((preSaleStartTime == 0 && preSaleDeadline == 0) || (preSaleStartTime > 0 && preSaleStartTime <= now && preSaleDeadline >= now));
+        require((preSaleStartTime() == 0 && preSaleDeadline() == 0) || (preSaleStartTime() > 0 && preSaleStartTime() <= now && preSaleDeadline() >= now));
         _;
     }
 
     modifier beforeICO() {
-        require(ICOStartTime == 0 && ICODeadline == 0);
+        require(ICOStartTime() == 0 && ICODeadline() == 0);
         _;
     }
 
     modifier duringICO() {
-        require(ICOStartTime > 0 && ICOStartTime <= now && ICODeadline >= now);
+        require(ICOStartTime() > 0 && ICOStartTime() <= now && ICODeadline() >= now);
         _;
     }
 
     modifier afterICO() {
-        require(ICOStartTime > 0 && ICODeadline < now);
+        require(ICOStartTime() > 0 && ICODeadline() < now);
         _;
     }
 
@@ -187,7 +170,7 @@ contract EXOToken is PausableToken {
     function transfer(address _to, uint256 _value) public whenNotPaused exceptFrozen returns (bool) {
         // Owner and frozen accounts can't receive tokens.
         require(_to != owner && frozenAccounts[_to] == false);
-        require(msg.sender != owner || balances[owner].sub(_value) >= minBalanceForStakeReward());
+        require(msg.sender != owner || balances[owner].sub(_value) >= minBalanceForStakeReward);
 
         return super.transfer(_to, _value);
     }
@@ -208,24 +191,10 @@ contract EXOToken is PausableToken {
      * @dev Start the pre-sale.
      */
     function startPreSale() external whenNotPaused onlyOwner beforePreSale beforeICO returns (bool) {
-        require(preSaleCarrier != address(0)); // carrier must be set first
+        preSaleStartTime(now);
+        preSaleDeadline(preSaleStartTime().add(preSaleDuration));
 
-        preSaleStartTime = now;
-        preSaleDeadline = preSaleStartTime.add(preSaleDuration);
-
-        StartPreSale(preSaleStartTime, preSaleDeadline);
-        return true;
-    }
-
-    /**
-     * @dev End the pre-sale.
-     */
-    function endPreSale() external whenNotPaused onlyOwner afterPreSale returns (bool) {
-        require(preSaleEnded == false);
-
-        preSaleEnded = true;
-
-        EndPreSale(preSaleStartTime, preSaleDeadline, balances[preSaleCarrier]);
+        StartPreSale(preSaleStartTime(), preSaleDeadline());
         return true;
     }
 
@@ -234,18 +203,19 @@ contract EXOToken is PausableToken {
      */
     function buyICOTokens() external payable whenNotPaused exceptFrozen duringICO returns (bool) {
         // Check for serious participants and if we have tokens available.
-        uint256 exoBought = msg.value.mul(ICOEthToExo);
-        require(availableICOFund >= exoBought && exoBought >= minICOTokensBoughtEveryPurchase);
+        uint256 exoBought = msg.value.mul(ICO_ETH_TO_EXO);
+        require(availableICOFund() >= exoBought && exoBought >= minICOTokensBoughtEveryPurchase);
 
         // Whales check!
         uint256 totalICOTokensBoughtByAccount = ICOTokensBought[msg.sender].add(exoBought);
         require(totalICOTokensBoughtByAccount <= maxICOTokensBought);
 
-        availableICOFund = availableICOFund.sub(exoBought);
+        availableICOFund(availableICOFund().sub(exoBought));
         balances[msg.sender] = balances[msg.sender].add(exoBought);
         ICOTokensBought[msg.sender] = totalICOTokensBoughtByAccount;
-        totalICOTokensBought = totalICOTokensBought.add(exoBought);
+        totalICOTokensBought(totalICOTokensBought().add(exoBought));
 
+        assert(totalICOTokensBought() == initialICOFund.sub(availableICOFund())); // check invariant
         Transfer(this, msg.sender, exoBought);
         return true;
     }
@@ -254,25 +224,12 @@ contract EXOToken is PausableToken {
      * @dev Start the ICO.
      */
     function startICO() external whenNotPaused onlyOwner afterPreSale beforeICO returns (bool) {
-        require(availableICOFund > 0);
+        require(availableICOFund() > 0);
 
-        ICOStartTime = now;
-        ICODeadline = ICOStartTime.add(ICODuration);
+        ICOStartTime(now);
+        ICODeadline(ICOStartTime().add(ICODuration));
 
-        StartICO(ICOStartTime, ICODeadline);
-        return true;
-    }
-
-    /**
-     * @dev End the ICO.
-     */
-    function endICO() external whenNotPaused onlyOwner afterICO returns (bool) {
-        require(ICOEnded == false);
-
-        ICOEnded = true;
-        assert(totalICOTokensBought == initialICOFund.sub(availableICOFund));
-
-        EndICO(ICOStartTime, ICODeadline, totalICOTokensBought);
+        StartICO(ICOStartTime(), ICODeadline());
         return true;
     }
 
@@ -280,11 +237,11 @@ contract EXOToken is PausableToken {
      * @dev Release any remaining ICO fund back to owner after ICO ended.
      */
     function releaseRemainingICOFundToOwner() external whenNotPaused onlyOwner afterICO returns (bool) {
-        require(availableICOFund > 0);
+        require(availableICOFund() > 0);
 
-        balances[owner] = balances[owner].add(availableICOFund);
-        Transfer(this, owner, availableICOFund);
-        availableICOFund = 0;
+        balanceOf(msg.sender, balanceOf(msg.sender).add(availableICOFund());
+        Transfer(this, msg.sender, availableICOFund());
+        availableICOFund(0);
         return true;
     }
 
@@ -311,10 +268,10 @@ contract EXOToken is PausableToken {
     function airdrop(address _to) external whenNotPaused onlyAirdropCarrier exceptFrozen afterICO returns (bool) {
         require(_to != address(0) && frozenAccounts[_to] == false);
         require(airdropped[_to] != true);
-        require(availableICOFund >= airdropAmount);
+        require(availableICOFund() >= airdropAmount);
 
         // Airdrop to the designated account.
-        availableICOFund = availableICOFund.sub(airdropAmount);
+        availableICOFund(availableICOFund().sub(airdropAmount));
         stakes[_to].balance = stakes[_to].balance.add(airdropAmount);
         stakes[_to].startTime = now;
         airdropped[_to] = true;
@@ -398,7 +355,7 @@ contract EXOToken is PausableToken {
 
         // 10% for the first 3 years.
         uint256 interestPeriod = 3 years;
-        uint256 interestStartTime = ICODeadline.add(1); // starts after ICO
+        uint256 interestStartTime = ICODeadline().add(1); // starts after ICO
         uint256 interestEndTime = interestStartTime.add(interestPeriod);
         // Only runs if the stake start time is within this interest period.
         if (stakeStartTime >= interestStartTime && stakeStartTime <= interestEndTime) {
@@ -436,11 +393,11 @@ contract EXOToken is PausableToken {
      */
     function setTreasuryCarrier(address _oldTreasuryCarrier, address _treasuryCarrier) external whenNotPaused onlySuperUser returns (bool) {
         require(isTreasuryCarrier(_oldTreasuryCarrier));
-        require(_treasuryCarrier != preSaleCarrier && _treasuryCarrier != airdropCarrier);
+        require(isPreSaleCarrier(_treasuryCarrier) == false && _treasuryCarrier != airdropCarrier);
 
         if (_moveFund("treasury", _oldTreasuryCarrier, _treasuryCarrier)) {
             if (! exoRole.roleTransfer("treasuryCarrier", _oldTreasuryCarrier, _treasuryCarrier)) {
-                throw();
+                throw;
             }
             SetTreasuryCarrier(_oldTreasuryCarrier, _treasuryCarrier);
             return true;
@@ -453,12 +410,14 @@ contract EXOToken is PausableToken {
      *
      * @param _preSaleCarrier The address of new pre-sale carrier account
      */
-    function setPreSaleCarrier(address _preSaleCarrier) external whenNotPaused onlyOwner beforeOrDuringPreSale returns (bool) {
+    function setPreSaleCarrier(address _oldPreSaleCarrier, address _preSaleCarrier) external whenNotPaused onlyOwner beforeOrDuringPreSale returns (bool) {
         require(isTreasuryCarrier(_preSaleCarrier) == false && _preSaleCarrier != airdropCarrier);
 
-        if (_moveFund("preSale", preSaleCarrier, _preSaleCarrier)) {
-            SetPreSaleCarrier(preSaleCarrier, _preSaleCarrier);
-            preSaleCarrier = _preSaleCarrier;
+        if (_moveFund("preSale", _oldPreSaleCarrier, _preSaleCarrier)) {
+            if (! exoRole.roleTransfer("preSaleCarrier", _oldPreSaleCarrier, _preSaleCarrier)) {
+                throw;
+            }
+            SetPreSaleCarrier(_oldPreSaleCarrier, _preSaleCarrier);
             return true;
         }
         return false;
@@ -470,7 +429,7 @@ contract EXOToken is PausableToken {
      * @param _airdropCarrier The only address privileged to airdrop
      */
     function setAirdropCarrier(address _airdropCarrier) external whenNotPaused onlyOwner returns (bool) {
-        require(_airdropCarrier != airdropCarrier && _airdropCarrier != owner && _airdropCarrier != preSaleCarrier && isTreasuryCarrier(_airdropCarrier) == false);
+        require(_airdropCarrier != airdropCarrier && _airdropCarrier != owner && isPreSaleCarrier(_airdropCarrier) == false && isTreasuryCarrier(_airdropCarrier) == false);
 
         SetAirdropCarrier(airdropCarrier, _airdropCarrier);
         airdropCarrier = _airdropCarrier;
@@ -553,25 +512,112 @@ contract EXOToken is PausableToken {
     }
 
     /**
-     * @dev Get the minimum balance for stake reward.
+     * @dev Get the pre-sale start time.
      */
-    function minBalanceForStakeReward() public view returns (uint256) {
-        return exoStorage.getUint(keccak256("token.minBalanceForStakeReward"));
+    function preSaleStartTime() public view returns (uint256) {
+        return exoStorage.getUint(keccak256("token.preSaleStartTime"));
     }
 
     /**
-     * @dev Set the minimum balance for stake reward.
-     *
-     * @param _minBalanceForStakeReward //
+     * @dev Get the pre-sale deadline.
      */
-    function minBalanceForStakeReward(uint256 _minBalanceForStakeReward) internal {
-        exoStorage.setUint(keccak256("token.minBalanceForStakeReward"), _minBalanceForStakeReward);
+    function preSaleDeadline() public view returns (uint256) {
+        return exoStorage.getUint(keccak256("token.preSaleDeadline"));
+    }
+
+    /**
+     * @dev Get the ICO start time.
+     */
+    function ICOStartTime() public view returns (uint256) {
+        return exoStorage.getUint(keccak256("token.ICOStartTime"));
+    }
+
+    /**
+     * @dev Get the ICO deadline.
+     */
+    function ICODeadline() public view returns (uint256) {
+        return exoStorage.getUint(keccak256("token.ICODeadline"));
+    }
+
+    /**
+     * @dev Get the available ICO fund.
+     */
+    function availableICOFund() public view returns (uint256) {
+        return exoStorage.getUint(keccak256("token.availableICOFund"));
+    }
+
+    /**
+     * @dev Get the total ICO tokens bought.
+     */
+    function totalICOTokensBought() public view returns (uint256) {
+        return exoStorage.getUint(keccak256("token.totalICOTokensBought"));
     }
 
     /**
      * @dev Check an address' access to treasury carrier role.
      */
-    function isTreasuryCarrier(address _address) public view returns (bool) {
+    function isTreasuryCarrier(address _address) internal view returns (bool) {
         return exoStorage.getBool(keccak256("access.role", "treasuryCarrier", _address));
+    }
+
+    /**
+     * @dev Check an address' access to pre-sale carrier role.
+     */
+    function isPreSaleCarrier(address _address) internal view returns (bool) {
+        return exoStorage.getBool(keccak256("access.role", "preSaleCarrier", _address));
+    }
+
+    /**
+     * @dev Set the pre-sale start time
+     *
+     * @param _preSaleStartTime //
+     */
+    function preSaleStartTime(uint256 _preSaleStartTime) private {
+        exoStorage.setUint(keccak256("token.preSaleStartTime"), _preSaleStartTime);
+    }
+
+    /**
+     * @dev Set the pre-sale deadline
+     *
+     * @param _preSaleDeadline //
+     */
+    function preSaleDeadline(uint256 _preSaleDeadline) private {
+        exoStorage.setUint(keccak256("token.preSaleDeadline"), _preSaleDeadline);
+    }
+
+    /**
+     * @dev Set the ICO start time
+     *
+     * @param _ICOStartTime //
+     */
+    function ICOStartTime(uint256 _ICOStartTime) private {
+        exoStorage.setUint(keccak256("token.ICOStartTime"), _ICOStartTime);
+    }
+
+    /**
+     * @dev Set the ICO deadline
+     *
+     * @param _ICODeadline //
+     */
+    function ICODeadline(uint256 _ICODeadline) private {
+        exoStorage.setUint(keccak256("token.ICODeadline"), _ICODeadline);
+    }
+
+    /**
+     * @dev Set the available ICO fund.
+     *
+     * @param _availableICOFund //
+     */
+    function availableICOFund(uint256 _availableICOFund) private {
+        exoStorage.setUint(keccak256("token.availableICOFund"), _availableICOFund);
+    }
+
+    /**
+     * @dev Set the total ICO tokens bought.
+     *
+     * @param _totalICOTokensBought //
+     */
+    function totalICOTokensBought(uint256 _totalICOTokensBought) private {
+        exoStorage.setUint(keccak256("token.totalICOTokensBought"), _totalICOTokensBought);
     }
 }
