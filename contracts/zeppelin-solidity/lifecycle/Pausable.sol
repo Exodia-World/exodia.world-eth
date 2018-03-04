@@ -1,16 +1,16 @@
 pragma solidity 0.4.18;
 
-import "../ownership/Ownable.sol";
+import "../..//EXOBase.sol";
 
 /**
  * @title Pausable
  * @dev Base contract which allows children to implement an emergency stop mechanism.
  */
-contract Pausable is Ownable {
+contract Pausable is EXOBase {
   event Pause();
   event Unpause();
 
-  bool public paused = false;
+  bool public paused = false; // no need to store this in eternal storage
 
   /**
    * @dev Modifier to make a function callable only when the contract is not paused.
