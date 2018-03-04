@@ -34,14 +34,14 @@ contract BasicToken is ERC20Basic, EXOBase {
    * @return An uint256 representing the amount owned by the passed address
    */
   function balanceOf(address _owner) public view returns (uint256 balance) {
-      return exoStorage.getUint(keccak256("token.balances", _owner, this));
+      return exoStorage.getUint(keccak256("token.balances", _owner));
   }
 
   /**
    * @dev Get total number of tokens in existence.
    */
   function totalSupply() public view returns (uint256) {
-    return exoStorage.getUint(keccak256("token.totalSupply", this));
+    return exoStorage.getUint(keccak256("token.totalSupply"));
   }
 
   /**
@@ -50,8 +50,8 @@ contract BasicToken is ERC20Basic, EXOBase {
    * @param _owner The address to query the the balance of
    * @param _balance The new balance owned by the passed address
    */
-  function balanceOf(address _owner, uint256 _balance) internal {
-      exoStorage.setUint(keccak256("token.balances", _owner, this), _balance);
+  function balanceOf(address _owner, uint256 _balance) internal onlyLatestVersionOf(this) {
+      exoStorage.setUint(keccak256("token.balances", _owner), _balance);
   }
 
   /**
@@ -59,7 +59,7 @@ contract BasicToken is ERC20Basic, EXOBase {
    *
    * @param _totalSupply //
    */
-  function totalSupply(uint256 _totalSupply) internal {
-    exoStorage.setUint(keccak256("token.totalSupply", this), _totalSupply);
+  function totalSupply(uint256 _totalSupply) internal onlyLatestVersionOf(this) {
+    exoStorage.setUint(keccak256("token.totalSupply"), _totalSupply);
   }
 }

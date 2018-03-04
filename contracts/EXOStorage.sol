@@ -19,7 +19,7 @@ contract EXOStorage {
     modifier onlyLatestNetworkContract() {
         // The owner and other contracts are only allowed to set the storage upon deployment
         // to register the initial contracts/settings, afterwards their direct access is disabled.
-        if (boolStorage[keccak256("contract.storage.initialised")] == true) {
+        if (boolStorage[keccak256("contract.storage.initialized")] == true) {
             // Make sure the access is permitted to only contracts in our Dapp.
             require(addressStorage[keccak256("contract.address", msg.sender)] != 0x0);
         }

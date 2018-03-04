@@ -31,6 +31,14 @@ contract EXORole is EXOBase {
     }
 
     /**
+     * @dev Transfer an address' access to this role to another address.
+     */
+    function roleTransfer(string _role, address _oldAddress, address _address) public onlyLatestVersionOf(this) onlySuperUser {
+        _roleRemove(_role, _oldAddress);
+        _roleAdd(_role, _address);
+    }
+
+    /**
      * @dev Give an address' access to this role.
      */
     function roleAdd(string _role, address _address) public onlyLatestVersionOf(this) onlySuperUser {

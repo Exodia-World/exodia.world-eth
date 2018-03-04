@@ -1,14 +1,15 @@
 pragma solidity 0.4.18;
 
-import "zeppelin-solidity/contracts/token/ERC20/PausableToken.sol";
+import "./zeppelin-solidity/token/ERC20/PausableToken.sol";
 import "./EXOBase.sol";
+import "./EXORole.sol";
 
 /**
  * @title EXO Token
  *
  * @dev Implementation of the EXO Token by Exodia.World.
  */
-contract EXOToken is EXOBase, PausableToken {
+contract EXOToken is PausableToken {
 
     struct Stake {
         uint256 balance;
@@ -19,8 +20,8 @@ contract EXOToken is EXOBase, PausableToken {
     string public symbol = "EXO";
     uint8 public decimals = 18;
 
-    uint256 public minBalanceForStakeReward;
-    address public treasuryCarrier;
+    EXORole private exoRole = EXORole(0);
+
     address public preSaleCarrier;
     uint256 public preSaleEthToExo;
     uint256 public preSaleStartTime;
@@ -79,6 +80,7 @@ contract EXOToken is EXOBase, PausableToken {
      */
     function EXOToken(
         address _exoStorageAddress,
+        address _exoRoleAddress,
         uint256 _totalSupply,
         uint256 _minBalanceForStakeReward,
         uint256 _lockedTreasuryFund,
@@ -93,30 +95,35 @@ contract EXOToken is EXOBase, PausableToken {
         uint256 _airdropAmount
     ) EXOBase("EXOToken", _exoStorageAddress) public
     {
-        totalSupply_ = _totalSupply.mul(uint(10)**decimals);
-        minBalanceForStakeReward = _minBalanceForStakeReward.mul(uint(10)**decimals);
+        exoRole = EXORole(_exoRoleAddress);
 
-        lockedFunds["treasury"] = _lockedTreasuryFund.mul(uint(10)**decimals);
-        lockedFunds["preSale"] = _lockedPreSaleFund.mul(uint(10)**decimals);
-        preSaleEthToExo = _preSaleEthToExo;
-        preSaleDuration = _preSaleDuration;
+        bool _isUpgrade = exoStorage.getBool(keccak256("contract.storage.initialized"));
+        if (_isUpgrade == false) {
+            totalSupply(_totalSupply.mul(uint(10)**decimals));
+            minBalanceForStakeReward(_minBalanceForStakeReward.mul(uint(10)**decimals));
 
-        availableICOFund = _availableICOFund.mul(uint(10)**decimals);
-        initialICOFund = availableICOFund;
-        minICOTokensBoughtEveryPurchase = _minICOTokensBoughtEveryPurchase.mul(uint(10)**decimals);
-        maxICOTokensBought = _maxICOTokensBought.mul(uint(10)**decimals);
-        ICOEthToExo = _ICOEthToExo;
-        ICODuration = _ICODuration;
+            lockedFunds["treasury"] = _lockedTreasuryFund.mul(uint(10)**decimals);
+            lockedFunds["preSale"] = _lockedPreSaleFund.mul(uint(10)**decimals);
+            preSaleEthToExo = _preSaleEthToExo;
+            preSaleDuration = _preSaleDuration;
 
-        airdropAmount = _airdropAmount.mul(uint(10)**decimals);
+            availableICOFund = _availableICOFund.mul(uint(10)**decimals);
+            initialICOFund = availableICOFund;
+            minICOTokensBoughtEveryPurchase = _minICOTokensBoughtEveryPurchase.mul(uint(10)**decimals);
+            maxICOTokensBought = _maxICOTokensBought.mul(uint(10)**decimals);
+            ICOEthToExo = _ICOEthToExo;
+            ICODuration = _ICODuration;
 
-        // Calculate remaining balance for stake reward.
-        balances[msg.sender] = totalSupply_
-            .sub(lockedFunds["treasury"])
-            .sub(lockedFunds["preSale"])
-            .sub(availableICOFund);
+            airdropAmount = _airdropAmount.mul(uint(10)**decimals);
 
-        assert(balances[msg.sender] >= minBalanceForStakeReward);
+            // Calculate remaining balance for stake reward.
+            balances[msg.sender] = totalSupply_
+                .sub(lockedFunds["treasury"])
+                .sub(lockedFunds["preSale"])
+                .sub(availableICOFund);
+
+            assert(balances[msg.sender] >= minBalanceForStakeReward());
+        }
     }
 
     modifier exceptOwner() {
@@ -160,7 +167,7 @@ contract EXOToken is EXOBase, PausableToken {
     }
 
     modifier exceptFrozen() {
-        require(! frozenAccounts[msg.sender]);
+        require(frozenAccounts[msg.sender] == false);
         _;
     }
 
@@ -179,8 +186,8 @@ contract EXOToken is EXOBase, PausableToken {
      */
     function transfer(address _to, uint256 _value) public whenNotPaused exceptFrozen returns (bool) {
         // Owner and frozen accounts can't receive tokens.
-        require(_to != owner && ! frozenAccounts[_to]);
-        require(msg.sender != owner || balances[owner].sub(_value) >= minBalanceForStakeReward);
+        require(_to != owner && frozenAccounts[_to] == false);
+        require(msg.sender != owner || balances[owner].sub(_value) >= minBalanceForStakeReward());
 
         return super.transfer(_to, _value);
     }
@@ -193,7 +200,7 @@ contract EXOToken is EXOBase, PausableToken {
      * @param _value The amount of tokens to be transferred
      */
     function transferFrom(address _from, address _to, uint256 _value) public whenNotPaused exceptFrozen returns (bool) {
-        require(! frozenAccounts[_from] && ! frozenAccounts[_to]);
+        require(frozenAccounts[_from] == false && frozenAccounts[_to] == false);
         return super.transferFrom(_from, _to, _value);
     }
 
@@ -214,7 +221,7 @@ contract EXOToken is EXOBase, PausableToken {
      * @dev End the pre-sale.
      */
     function endPreSale() external whenNotPaused onlyOwner afterPreSale returns (bool) {
-        require(! preSaleEnded);
+        require(preSaleEnded == false);
 
         preSaleEnded = true;
 
@@ -260,7 +267,7 @@ contract EXOToken is EXOBase, PausableToken {
      * @dev End the ICO.
      */
     function endICO() external whenNotPaused onlyOwner afterICO returns (bool) {
-        require(! ICOEnded);
+        require(ICOEnded == false);
 
         ICOEnded = true;
         assert(totalICOTokensBought == initialICOFund.sub(availableICOFund));
@@ -302,7 +309,7 @@ contract EXOToken is EXOBase, PausableToken {
      * @param _to The address which the airdrop is designated to
      */
     function airdrop(address _to) external whenNotPaused onlyAirdropCarrier exceptFrozen afterICO returns (bool) {
-        require(_to != address(0) && ! frozenAccounts[_to]);
+        require(_to != address(0) && frozenAccounts[_to] == false);
         require(airdropped[_to] != true);
         require(availableICOFund >= airdropAmount);
 
@@ -427,12 +434,15 @@ contract EXOToken is EXOBase, PausableToken {
      *
      * @param _treasuryCarrier The address of new treasury carrier account
      */
-    function setTreasuryCarrier(address _treasuryCarrier) external whenNotPaused onlyOwner returns (bool) {
+    function setTreasuryCarrier(address _oldTreasuryCarrier, address _treasuryCarrier) external whenNotPaused onlySuperUser returns (bool) {
+        require(isTreasuryCarrier(_oldTreasuryCarrier));
         require(_treasuryCarrier != preSaleCarrier && _treasuryCarrier != airdropCarrier);
 
-        if (_moveFund("treasury", treasuryCarrier, _treasuryCarrier)) {
-            SetTreasuryCarrier(treasuryCarrier, _treasuryCarrier);
-            treasuryCarrier = _treasuryCarrier;
+        if (_moveFund("treasury", _oldTreasuryCarrier, _treasuryCarrier)) {
+            if (! exoRole.roleTransfer("treasuryCarrier", _oldTreasuryCarrier, _treasuryCarrier)) {
+                throw();
+            }
+            SetTreasuryCarrier(_oldTreasuryCarrier, _treasuryCarrier);
             return true;
         }
         return false;
@@ -444,7 +454,7 @@ contract EXOToken is EXOBase, PausableToken {
      * @param _preSaleCarrier The address of new pre-sale carrier account
      */
     function setPreSaleCarrier(address _preSaleCarrier) external whenNotPaused onlyOwner beforeOrDuringPreSale returns (bool) {
-        require(_preSaleCarrier != treasuryCarrier && _preSaleCarrier != airdropCarrier);
+        require(isTreasuryCarrier(_preSaleCarrier) == false && _preSaleCarrier != airdropCarrier);
 
         if (_moveFund("preSale", preSaleCarrier, _preSaleCarrier)) {
             SetPreSaleCarrier(preSaleCarrier, _preSaleCarrier);
@@ -460,7 +470,7 @@ contract EXOToken is EXOBase, PausableToken {
      * @param _airdropCarrier The only address privileged to airdrop
      */
     function setAirdropCarrier(address _airdropCarrier) external whenNotPaused onlyOwner returns (bool) {
-        require(_airdropCarrier != airdropCarrier && _airdropCarrier != owner && _airdropCarrier != preSaleCarrier && _airdropCarrier != treasuryCarrier);
+        require(_airdropCarrier != airdropCarrier && _airdropCarrier != owner && _airdropCarrier != preSaleCarrier && isTreasuryCarrier(_airdropCarrier) == false);
 
         SetAirdropCarrier(airdropCarrier, _airdropCarrier);
         airdropCarrier = _airdropCarrier;
@@ -540,5 +550,28 @@ contract EXOToken is EXOBase, PausableToken {
         }
 
         return true;
+    }
+
+    /**
+     * @dev Get the minimum balance for stake reward.
+     */
+    function minBalanceForStakeReward() public view returns (uint256) {
+        return exoStorage.getUint(keccak256("token.minBalanceForStakeReward"));
+    }
+
+    /**
+     * @dev Set the minimum balance for stake reward.
+     *
+     * @param _minBalanceForStakeReward //
+     */
+    function minBalanceForStakeReward(uint256 _minBalanceForStakeReward) internal {
+        exoStorage.setUint(keccak256("token.minBalanceForStakeReward"), _minBalanceForStakeReward);
+    }
+
+    /**
+     * @dev Check an address' access to treasury carrier role.
+     */
+    function isTreasuryCarrier(address _address) public view returns (bool) {
+        return exoStorage.getBool(keccak256("access.role", "treasuryCarrier", _address));
     }
 }

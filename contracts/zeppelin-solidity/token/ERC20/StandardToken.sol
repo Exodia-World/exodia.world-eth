@@ -55,7 +55,7 @@ contract StandardToken is ERC20, BasicToken {
    * @return A uint256 specifying the amount of tokens still available for the spender.
    */
   function allowance(address _owner, address _spender) public view returns (uint256) {
-      return exoStorage.getUint(keccak256("token.allowed", _owner, _spender, this));
+      return exoStorage.getUint(keccak256("token.allowed", _owner, _spender));
   }
 
   /**
@@ -91,11 +91,11 @@ contract StandardToken is ERC20, BasicToken {
     } else {
       allowance(msg.sender, _spender, oldValue.sub(_subtractedValue));
     }
-    Approval(msg.sender, _spender, allowed[msg.sender][_spender]);
+    Approval(msg.sender, _spender, allowance(msg.sender, _spender));
     return true;
   }
 
-  function allowance(address _owner, address _spender, uint256 _value) internal {
-      exoStorage.setUint(keccak256("token.allowed", _owner, _spender, this), _value);
+  function allowance(address _owner, address _spender, uint256 _value) internal onlyLatestVersionOf(this) {
+      exoStorage.setUint(keccak256("token.allowed", _owner, _spender), _value);
   }
 }
