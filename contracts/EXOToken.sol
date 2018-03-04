@@ -24,7 +24,7 @@ contract EXOToken is PausableToken {
     uint256 public constant PRESALE_ETH_TO_EXO = 7300;
     uint256 public preSaleDuration; // in seconds
 
-    uint256 public ICO_ETH_TO_EXO = 3650;
+    uint256 public constant ICO_ETH_TO_EXO = 3650;
     uint256 public ICODuration; // in seconds
     uint256 public initialICOFund;
     uint256 public minICOTokensBoughtEveryPurchase; // by one account for one purchase
