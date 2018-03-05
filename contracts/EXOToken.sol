@@ -16,11 +16,11 @@ contract EXOToken is PausableToken {
         uint256 startTime;
     }
 
-    string public constant NAME = "EXO";
-    string public constant SYMBOL = "EXO";
-    uint8 public constant DECIMALS = 18;
-    uint256 public constant PRESALE_ETH_TO_EXO = 7300;
-    uint256 public constant ICO_ETH_TO_EXO = 3650;
+    string constant NAME = "EXO";
+    string constant SYMBOL = "EXO";
+    uint8 constant DECIMALS = 18;
+    uint256 constant PRESALE_ETH_TO_EXO = 7300;
+    uint256 constant ICO_ETH_TO_EXO = 3650;
 
     uint256 public minBalanceForStakeReward;
     uint256 public preSaleDuration; // in seconds
