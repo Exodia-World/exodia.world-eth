@@ -10,12 +10,6 @@ import "./EXORole.sol";
  * @dev Implementation of the EXO Token by Exodia.World.
  */
 contract EXOToken is PausableToken {
-
-    struct Stake {
-        uint256 balance;
-        uint256 startTime;
-    }
-
     string constant NAME = "EXO";
     string constant SYMBOL = "EXO";
     uint8 constant DECIMALS = 18;
@@ -29,11 +23,6 @@ contract EXOToken is PausableToken {
     uint256 public minICOTokensBoughtEveryPurchase; // by one account for one purchase
     uint256 public maxICOTokensBought; // by one account for all purchases
     uint256 public airdropAmount;
-
-    mapping (bytes32 => uint256) public lockedFunds;
-    mapping (address => uint256) public ICOTokensBought; // to keep track of ICO participants' contributions
-    mapping (address => bool) public airdropped;
-    mapping (address => Stake) public stakes;
 
     EXORole private exoRole = EXORole(0);
 
@@ -76,15 +65,19 @@ contract EXOToken is PausableToken {
         uint256 _airdropAmount
     ) EXOBase("EXOToken", _exoStorageAddress) public
     {
+        roleCheck("owner", msg.sender, true);
         exoRole = EXORole(exoStorage.getAddress(keccak256("contract.name", "EXORole")));
 
         bool _isUpgrade = exoStorage.getBool(keccak256("contract.storage.initialized"));
         if (_isUpgrade == false) {
+            // Execute everything below only once on initial deployment.
+            primaryHolder(msg.sender); // set the primary holder of EXO tokens
+
             totalSupply(_totalSupply.mul(uint(10)**DECIMALS));
             minBalanceForStakeReward = _minBalanceForStakeReward.mul(uint(10)**DECIMALS);
 
-            lockedFunds["treasury"] = _lockedTreasuryFund.mul(uint(10)**DECIMALS);
-            lockedFunds["preSale"] = _lockedPreSaleFund.mul(uint(10)**DECIMALS);
+            lockedFundOf("treasury", _lockedTreasuryFund.mul(uint(10)**DECIMALS));
+            lockedFundOf("preSale", _lockedPreSaleFund.mul(uint(10)**DECIMALS));
             preSaleDuration = _preSaleDuration;
 
             ICODuration = _ICODuration;
@@ -97,8 +90,8 @@ contract EXOToken is PausableToken {
 
             // Calculate remaining balance for stake reward.
             balanceOf(msg.sender, totalSupply()
-                .sub(lockedFunds["treasury"])
-                .sub(lockedFunds["preSale"])
+                .sub(lockedFundOf("treasury"))
+                .sub(lockedFundOf("preSale"))
                 .sub(availableICOFund()));
 
             assert(balanceOf(msg.sender) >= minBalanceForStakeReward);
@@ -152,7 +145,9 @@ contract EXOToken is PausableToken {
         // Owner and frozen accounts can't receive tokens.
         roleCheck("owner", _to, false);
         roleCheck("frozen", _to, false);
-        require(msg.sender != owner || balanceOf(owner).sub(_value) >= minBalanceForStakeReward);
+
+        address primaryHolder_ = primaryHolder();
+        require(msg.sender != primaryHolder_ || balanceOf(primaryHolder_).sub(_value) >= minBalanceForStakeReward);
 
         return super.transfer(_to, _value);
     }
@@ -190,12 +185,12 @@ contract EXOToken is PausableToken {
         require(availableICOFund() >= exoBought && exoBought >= minICOTokensBoughtEveryPurchase);
 
         // Whales check!
-        uint256 totalICOTokensBoughtByAccount = ICOTokensBought[msg.sender].add(exoBought);
+        uint256 totalICOTokensBoughtByAccount = ICOTokensBoughtBy(msg.sender).add(exoBought);
         require(totalICOTokensBoughtByAccount <= maxICOTokensBought);
 
         availableICOFund(availableICOFund().sub(exoBought));
         balanceOf(msg.sender, balanceOf(msg.sender).add(exoBought));
-        ICOTokensBought[msg.sender] = totalICOTokensBoughtByAccount;
+        ICOTokensBoughtBy(msg.sender, totalICOTokensBoughtByAccount);
         totalICOTokensBought(totalICOTokensBought().add(exoBought));
 
         assert(totalICOTokensBought() == initialICOFund.sub(availableICOFund())); // check invariant
@@ -217,28 +212,30 @@ contract EXOToken is PausableToken {
     }
 
     /**
-     * @dev Release any remaining ICO fund back to owner after ICO ended.
+     * @dev Release any remaining ICO fund back to primary holder after ICO ended.
      */
-    function releaseRemainingICOFundToOwner() external whenNotPaused onlyRole("owner") afterICO returns (bool) {
+    function releaseRemainingICOFundToPrimaryHolder() external whenNotPaused onlyRole("owner") afterICO returns (bool) {
         require(availableICOFund() > 0);
 
-        balanceOf(msg.sender, balanceOf(msg.sender).add(availableICOFund()));
+        address primaryHolder_ = primaryHolder();
+        balanceOf(primaryHolder_, balanceOf(primaryHolder_).add(availableICOFund()));
         Transfer(this, msg.sender, availableICOFund());
         availableICOFund(0);
         return true;
     }
 
     /**
-     * @dev Send ETH fund raised in ICO for owner.
+     * @dev Send ETH fund raised in ICO for primary holder.
      */
     function claimEtherFundRaisedInICO() external whenNotPaused onlyRole("owner") afterICO returns (bool) {
         require(this.balance > 0);
 
         // WARNING: All Ethers will be sent, even for non-ICO-related.
         uint256 fundRaised = this.balance;
-        owner.transfer(fundRaised);
+        address primaryHolder_ = primaryHolder();
+        primaryHolder_.transfer(fundRaised);
 
-        TransferETH(this, owner, fundRaised);
+        TransferETH(this, primaryHolder_, fundRaised);
         return true;
     }
 
@@ -251,14 +248,14 @@ contract EXOToken is PausableToken {
     function airdrop(address _to) external whenNotPaused onlyRole("airdropCarrier") exceptRole("frozen") afterICO returns (bool) {
         roleCheck("frozen", _to, false);
         require(_to != address(0));
-        require(airdropped[_to] != true);
+        require(isAirdropped(_to) == false);
         require(availableICOFund() >= airdropAmount);
 
         // Airdrop to the designated account.
         availableICOFund(availableICOFund().sub(airdropAmount));
-        stakes[_to].balance = stakes[_to].balance.add(airdropAmount);
-        stakes[_to].startTime = now;
-        airdropped[_to] = true;
+        stakeBalanceOf(_to, stakeBalanceOf(_to).add(airdropAmount));
+        stakeStartTimeOf(_to, now);
+        isAirdropped(_to, true);
 
         Transfer(msg.sender, _to, airdropAmount);
         return true;
@@ -275,7 +272,7 @@ contract EXOToken is PausableToken {
 
         updateStakeBalance();
         balanceOf(msg.sender, balanceOf(msg.sender).sub(_value));
-        stakes[msg.sender].balance = stakes[msg.sender].balance.add(_value);
+        stakeBalanceOf(msg.sender, stakeBalanceOf(msg.sender).add(_value));
 
         DepositStake(msg.sender, _value);
         return true;
@@ -288,15 +285,15 @@ contract EXOToken is PausableToken {
      * @param _value The amount of EXO to withdraw
      */
     function withdrawStake(uint256 _value) external whenNotPaused exceptRole("frozen") exceptRole("owner") afterICO returns (bool) {
-        require(_value > 0 && stakes[msg.sender].balance >= _value);
+        require(_value > 0 && stakeBalanceOf(msg.sender) >= _value);
 
         // No reward if staking has not been for at least 21 days.
-        if (now.sub(stakes[msg.sender].startTime) >= 21 days) {
+        if (now.sub(stakeStartTimeOf(msg.sender)) >= 21 days) {
             updateStakeBalance();
         } else {
-            stakes[msg.sender].startTime = now; // re-stake balance even if no reward
+            stakeStartTimeOf(msg.sender, now); // re-stake balance even if no reward
         }
-        stakes[msg.sender].balance = stakes[msg.sender].balance.sub(_value);
+        stakeBalanceOf(msg.sender, stakeBalanceOf(msg.sender).sub(_value));
         balanceOf(msg.sender, balanceOf(msg.sender).add(_value));
 
         WithdrawStake(msg.sender, _value);
@@ -308,17 +305,18 @@ contract EXOToken is PausableToken {
      */
     function updateStakeBalance() public whenNotPaused exceptRole("frozen") exceptRole("owner") afterICO returns (uint256) {
         // Has the staking been for at least 21 days?
-        require(now.sub(stakes[msg.sender].startTime) >= 21 days);
+        require(now.sub(stakeStartTimeOf(msg.sender)) >= 21 days);
 
+        address primaryHolder_ = primaryHolder();
         uint256 interest = calculateInterest();
-        require(balanceOf(owner) >= interest);
+        require(balanceOf(primaryHolder_) >= interest);
 
-        balanceOf(owner, balanceOf(owner).sub(interest));
-        stakes[msg.sender].balance = stakes[msg.sender].balance.add(interest);
-        stakes[msg.sender].startTime = now;
+        balanceOf(primaryHolder_, balanceOf(primaryHolder_).sub(interest));
+        stakeBalanceOf(msg.sender, stakeBalanceOf(msg.sender).add(interest));
+        stakeStartTimeOf(msg.sender, now);
 
-        UpdateStakeBalance(msg.sender, stakes[msg.sender].balance);
-        return stakes[msg.sender].balance;
+        UpdateStakeBalance(msg.sender, stakeBalanceOf(msg.sender));
+        return stakeBalanceOf(msg.sender);
     }
 
     /**
@@ -330,12 +328,13 @@ contract EXOToken is PausableToken {
      * For example, staking of 5 EXO for 16 days would yield 5 EXO * 0.0273% (rate per day) * 14 (days).
      */
     function calculateInterest() public view exceptRole("owner") afterICO returns (uint256) {
-        if (stakes[msg.sender].balance == 0 || stakes[msg.sender].startTime == 0 || balanceOf(owner) == 0) {return 0;}
+        address primaryHolder_ = primaryHolder();
+        if (stakeBalanceOf(msg.sender) == 0 || stakeStartTimeOf(msg.sender) == 0 || balanceOf(primaryHolder_) == 0) {return 0;}
 
         uint256 totalInterest = 0;
         uint256 stakeDays = 0;
         uint256 eligibleStakeDays = 0;
-        uint256 stakeStartTime = stakes[msg.sender].startTime;
+        uint256 stakeStartTime = stakeStartTimeOf(msg.sender);
 
         // 10% for the first 3 years.
         uint256 interestPeriod = 3 years;
@@ -349,7 +348,7 @@ contract EXOToken is PausableToken {
             // Ex: 34 days // 7 days = 4 cycles with a remainder ==> 4 cycles * 7 days = 28 days
             eligibleStakeDays = stakeDays.div(7).mul(7);
             // Ex: interest = 50 EXO * (10%/365 days) * 28 days
-            totalInterest = stakes[msg.sender].balance.mul(10).mul(eligibleStakeDays).div(36500);
+            totalInterest = stakeBalanceOf(msg.sender).mul(10).mul(eligibleStakeDays).div(36500);
         }
 
         // 5% for the rest.
@@ -364,15 +363,16 @@ contract EXOToken is PausableToken {
             // Left over staking days from the first period are carried over to this one.
             stakeDays = now.sub(stakeStartTime).div(1 days).add(leftOverStakeDays);
             eligibleStakeDays = stakeDays.div(7).mul(7);
-            totalInterest = totalInterest.add(stakes[msg.sender].balance.mul(5).mul(eligibleStakeDays).div(36500));
+            totalInterest = totalInterest.add(stakeBalanceOf(msg.sender).mul(5).mul(eligibleStakeDays).div(36500));
         }
 
-        return balanceOf(owner) >= totalInterest ? totalInterest : balanceOf(owner);
+        return balanceOf(primaryHolder_) >= totalInterest ? totalInterest : balanceOf(primaryHolder_);
     }
 
     /**
      * @dev Set new treasury carrier account and transfer fund into its wallet.
      *
+     * @param _oldTreasuryCarrier The address of old treasury carrier account
      * @param _treasuryCarrier The address of new treasury carrier account
      */
     function setTreasuryCarrier(address _oldTreasuryCarrier, address _treasuryCarrier) external whenNotPaused onlySuperUser returns (bool) {
@@ -390,6 +390,7 @@ contract EXOToken is PausableToken {
     /**
      * @dev Set new pre-sale carrier account and transfer fund into its wallet.
      *
+     * @param _oldPreSaleCarrier The address of old pre-sale carrier account
      * @param _preSaleCarrier The address of new pre-sale carrier account
      */
     function setPreSaleCarrier(address _oldPreSaleCarrier, address _preSaleCarrier) external whenNotPaused onlySuperUser beforeOrDuringPreSale returns (bool) {
@@ -405,24 +406,6 @@ contract EXOToken is PausableToken {
     }
 
     /**
-     * @dev Get the stake balance of an account.
-     *
-     * @param _staker The staker's account address
-     */
-    function stakeBalanceOf(address _staker) external view returns (uint256) {
-        return stakes[_staker].balance;
-    }
-
-    /**
-     * @dev Get the stake start time of an account.
-     *
-     * @param _staker The staker's account address
-     */
-    function stakeStartTimeOf(address _staker) external view returns (uint256) {
-        return stakes[_staker].startTime;
-    }
-
-    /**
      * @dev Move remaining fund to a new carrier.
      *
      * @param _lockedFundName The name of fund to be released if the first carrier is set
@@ -431,10 +414,10 @@ contract EXOToken is PausableToken {
      */
     function _moveFund(bytes32 _lockedFundName, address _oldCarrier, address _newCarrier) internal onlySuperUser returns (bool) {
         // Check for non-sensical address and possibility of abuse.
-        require(_oldCarrier != _newCarrier && _newCarrier != address(0) && _newCarrier != owner);
+        require(_oldCarrier != _newCarrier && _newCarrier != address(0) && _newCarrier != primaryHolder());
         require(balanceOf(_newCarrier) == 0); // burn check!
 
-        uint256 lockedFund = lockedFunds[_lockedFundName];
+        uint256 lockedFund = lockedFundOf(_lockedFundName);
 
         if (lockedFund == 0 && _oldCarrier != address(0)) {
             assert(balanceOf(_oldCarrier) > 0);
@@ -446,7 +429,7 @@ contract EXOToken is PausableToken {
         } else if (lockedFund > 0 && _oldCarrier == address(0)) {
             // Release fund to new carrier.
             balanceOf(_newCarrier, lockedFund);
-            lockedFunds[_lockedFundName] = 0;
+            lockedFundOf(_lockedFundName, 0);
             Transfer(this, _newCarrier, balanceOf(_newCarrier));
         } else {
             // Revert if anything unexpected happens.
@@ -454,6 +437,13 @@ contract EXOToken is PausableToken {
         }
 
         return true;
+    }
+
+    /**
+     * @dev Get the primary holder.
+     */
+    function primaryHolder() public view returns (address) {
+        return exoStorage.getAddress(keccak256("token.primaryHolder"));
     }
 
     /**
@@ -496,6 +486,60 @@ contract EXOToken is PausableToken {
      */
     function totalICOTokensBought() public view returns (uint256) {
         return exoStorage.getUint(keccak256("token.totalICOTokensBought"));
+    }
+
+    /**
+     * @dev Get locked fund of a type.
+     *
+     * @param _type //
+     */
+    function lockedFundOf(bytes32 _type) public view returns (uint256) {
+        return exoStorage.getUint(keccak256("token.lockedFunds", _type));
+    }
+
+    /**
+     * @dev Get the total ICO tokens (EXO) bought by an address.
+     *
+     * @param _address //
+     */
+    function ICOTokensBoughtBy(address _address) public view returns (uint256) {
+        return exoStorage.getUint(keccak256("token.ICOTokensBought", _address));
+    }
+
+    /**
+     * @dev Has an address received airdrop tokens before?
+     *
+     * @param _address //
+     */
+    function isAirdropped(address _address) public view returns (bool) {
+        return exoStorage.getBool(keccak256("token.airdropped", _address));
+    }
+
+    /**
+     * @dev Get the stake balance of an account.
+     *
+     * @param _staker The staker's account address
+     */
+    function stakeBalanceOf(address _staker) public view returns (uint256) {
+        return exoStorage.getUint(keccak256("token.stakes", "balance", _staker));
+    }
+
+    /**
+     * @dev Get the stake start time of an account.
+     *
+     * @param _staker The staker's account address
+     */
+    function stakeStartTimeOf(address _staker) public view returns (uint256) {
+        return exoStorage.getUint(keccak256("token.stakes", "startTime", _staker));
+    }
+
+    /**
+     * @dev Set the primary holder of tokens.
+     *
+     * @param _holder The address of holder
+     */
+    function primaryHolder(address _holder) private {
+        exoStorage.setAddress(keccak256("token.primaryHolder"), _holder);
     }
 
     /**
@@ -550,5 +594,55 @@ contract EXOToken is PausableToken {
      */
     function totalICOTokensBought(uint256 _totalICOTokensBought) private {
         exoStorage.setUint(keccak256("token.totalICOTokensBought"), _totalICOTokensBought);
+    }
+
+    /**
+     * @dev Set value for the locked fund of a type.
+     *
+     * @param _type //
+     * @param _value //
+     */
+    function lockedFundOf(bytes32 _type, uint256 _value) private {
+        exoStorage.setUint(keccak256("token.lockedFunds", _type), _value);
+    }
+
+    /**
+     * @dev Set value for the total ICO tokens bought by an address.
+     *
+     * @param _address //
+     * @param _value //
+     */
+    function ICOTokensBoughtBy(address _address, uint256 _value) private {
+        exoStorage.setUint(keccak256("token.ICOTokensBought", _address), _value);
+    }
+
+    /**
+     * @dev Mark an address' airdrop status.
+     *
+     * @param _address //
+     * @param _isAirdropped //
+     */
+    function isAirdropped(address _address, bool _isAirdropped) private {
+        exoStorage.setBool(keccak256("token.airdropped", _address), _isAirdropped);
+    }
+
+    /**
+     * @dev Set the stake balance of an account.
+     *
+     * @param _staker The staker's account address
+     * @param _value //
+     */
+    function stakeBalanceOf(address _staker, uint256 _value) private {
+        exoStorage.setUint(keccak256("token.stakes", "balance", _staker), _value);
+    }
+
+    /**
+     * @dev Set the stake start time of an account.
+     *
+     * @param _staker The staker's account address
+     * @param _value //
+     */
+    function stakeStartTimeOf(address _staker, uint256 _value) private {
+        exoStorage.setUint(keccak256("token.stakes", "startTime", _staker), _value);
     }
 }
