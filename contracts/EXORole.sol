@@ -22,9 +22,9 @@ contract EXORole is EXOBase {
      *
      * @param _newOwner The address to transfer ownership to
      */
-    function transferOwnership(address _newOwner) public onlyLatestVersionOf(this) onlyOwner {
-        require(_newOwner != 0x0);
-        roleCheck("owner", msg.sender); // check if the role exists 
+    function transferOwnership(address _newOwner) public onlyLatestVersionOf(this) onlyRole("owner") {
+        require(_newOwner != address(0));
+        roleCheck("owner", msg.sender, true); // check if the role exists 
 
         exoStorage.deleteBool(keccak256("access.role", "owner", msg.sender));
         exoStorage.setBool(keccak256("access.role",  "owner", _newOwner), true);

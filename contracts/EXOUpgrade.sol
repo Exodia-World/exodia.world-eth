@@ -31,7 +31,7 @@ contract EXOUpgrade is EXOBase {
         string _name,
         address _upgradedContractAddress,
         bool _forceEther
-    ) external onlyLatestVersionOf(this) onlyOwner
+    ) external onlyLatestVersionOf(this) onlyRole("owner")
     {
         // Get the current contract's address and check if it exists.
         address oldContractAddress = exoStorage.getAddress(keccak256("contract.name", _name));

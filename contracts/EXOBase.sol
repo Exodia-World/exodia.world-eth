@@ -25,23 +25,18 @@ contract EXOBase {
         _;
     }
 
-    modifier onlyOwner() {
-        roleCheck("owner", msg.sender);
-        _;
-    }
-
-    modifier onlyAdmin() {
-        roleCheck("admin", msg.sender);
-        _;
-    }
-
     modifier onlySuperUser() {
         require(roleHas("owner", msg.sender) || roleHas("admin", msg.sender));
         _;
     }
 
     modifier onlyRole(string _role) {
-        roleCheck(_role, msg.sender);
+        roleCheck(_role, msg.sender, true);
+        _;
+    }
+
+    modifier exceptRole(string _role) {
+        roleCheck(_role, msg.sender, false);
         _;
     }
   
@@ -54,8 +49,12 @@ contract EXOBase {
 
     /**
      * @dev Check if an address has this role, reverts if it doesn't.
+     *
+     * @param _role //
+     * @param _address //
+     * @param _hasRole Should the address have this role?
      */
-    function roleCheck(string _role, address _address) internal view {
-        require(roleHas(_role, _address) == true);
+    function roleCheck(string _role, address _address, bool _hasRole) internal view {
+        require(roleHas(_role, _address) == _hasRole);
     }
 }

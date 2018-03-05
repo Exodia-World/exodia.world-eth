@@ -16,28 +16,24 @@ contract EXOToken is PausableToken {
         uint256 startTime;
     }
 
-    string public name = "EXO";
-    string public symbol = "EXO";
-    uint8 public decimals = 18;
-    uint256 public minBalanceForStakeReward;
-
+    string public constant NAME = "EXO";
+    string public constant SYMBOL = "EXO";
+    uint8 public constant DECIMALS = 18;
     uint256 public constant PRESALE_ETH_TO_EXO = 7300;
-    uint256 public preSaleDuration; // in seconds
-
     uint256 public constant ICO_ETH_TO_EXO = 3650;
+
+    uint256 public minBalanceForStakeReward;
+    uint256 public preSaleDuration; // in seconds
     uint256 public ICODuration; // in seconds
     uint256 public initialICOFund;
     uint256 public minICOTokensBoughtEveryPurchase; // by one account for one purchase
     uint256 public maxICOTokensBought; // by one account for all purchases
-
     uint256 public airdropAmount;
-    address public airdropCarrier;
 
     mapping (bytes32 => uint256) public lockedFunds;
     mapping (address => uint256) public ICOTokensBought; // to keep track of ICO participants' contributions
     mapping (address => bool) public airdropped;
     mapping (address => Stake) public stakes;
-    mapping (address => bool) public frozenAccounts;
 
     EXORole private exoRole = EXORole(0);
 
@@ -50,20 +46,20 @@ contract EXOToken is PausableToken {
     event SetTreasuryCarrier(address indexed oldCarrier, address indexed newCarrier);
     event SetPreSaleCarrier(address indexed oldCarrier, address indexed newCarrier);
     event SetAirdropCarrier(address indexed oldCarrier, address indexed newCarrier);
-    event FreezeAccount(address targetAccount, bool isFrozen);
     
     /**
      * @dev Set token information.
      *
+     * @param _exoStorageAddress The EXO eternal storage's address
      * @param _totalSupply The total supply of tokens -- it's fixed
      * @param _minBalanceForStakeReward The minimum balance required for stake reward
      * @param _lockedTreasuryFund Locked treasury fund, only handed to its carrier account
      * @param _lockedPreSaleFund Locked pre-sale fund, only handed to its carrier account
      * @param _preSaleDuration The duration of pre-sale period in seconds
+     * @param _ICODuration The duration of ICO
      * @param _availableICOFund Total amount of tokens that can be bought in ICO
      * @param _minICOTokensBoughtEveryPurchase The minimum amount of ICO tokens that must be bought by one account for every purchase
      * @param _maxICOTokensBought The maximum amount of ICO tokens that can be bought by one account for all purchases
-     * @param _ICODuration The duration of ICO
      * @param _airdropAmount The airdrop amount for a single account
      */
     function EXOToken(
@@ -84,39 +80,29 @@ contract EXOToken is PausableToken {
 
         bool _isUpgrade = exoStorage.getBool(keccak256("contract.storage.initialized"));
         if (_isUpgrade == false) {
-            totalSupply(_totalSupply.mul(uint(10)**decimals));
-            minBalanceForStakeReward= _minBalanceForStakeReward.mul(uint(10)**decimals));
+            totalSupply(_totalSupply.mul(uint(10)**DECIMALS));
+            minBalanceForStakeReward = _minBalanceForStakeReward.mul(uint(10)**DECIMALS);
 
-            lockedFunds["treasury"] = _lockedTreasuryFund.mul(uint(10)**decimals);
-            lockedFunds["preSale"] = _lockedPreSaleFund.mul(uint(10)**decimals);
+            lockedFunds["treasury"] = _lockedTreasuryFund.mul(uint(10)**DECIMALS);
+            lockedFunds["preSale"] = _lockedPreSaleFund.mul(uint(10)**DECIMALS);
             preSaleDuration = _preSaleDuration;
 
             ICODuration = _ICODuration;
-            availableICOFund(_availableICOFund.mul(uint(10)**decimals));
+            availableICOFund(_availableICOFund.mul(uint(10)**DECIMALS));
             initialICOFund = availableICOFund();
-            minICOTokensBoughtEveryPurchase = _minICOTokensBoughtEveryPurchase.mul(uint(10)**decimals);
-            maxICOTokensBought = _maxICOTokensBought.mul(uint(10)**decimals);
+            minICOTokensBoughtEveryPurchase = _minICOTokensBoughtEveryPurchase.mul(uint(10)**DECIMALS);
+            maxICOTokensBought = _maxICOTokensBought.mul(uint(10)**DECIMALS);
 
-            airdropAmount = _airdropAmount.mul(uint(10)**decimals);
+            airdropAmount = _airdropAmount.mul(uint(10)**DECIMALS);
 
             // Calculate remaining balance for stake reward.
-            balances[msg.sender] = totalSupply_
+            balanceOf(msg.sender, totalSupply()
                 .sub(lockedFunds["treasury"])
                 .sub(lockedFunds["preSale"])
-                .sub(availableICOFund());
+                .sub(availableICOFund()));
 
-            assert(balances[msg.sender] >= minBalanceForStakeReward);
+            assert(balanceOf(msg.sender) >= minBalanceForStakeReward);
         }
-    }
-
-    modifier exceptOwner() {
-        require(msg.sender != owner);
-        _;
-    }
-
-    modifier onlyAirdropCarrier() {
-        require(msg.sender == airdropCarrier);
-        _;
     }
 
     modifier beforePreSale() {
@@ -149,11 +135,6 @@ contract EXOToken is PausableToken {
         _;
     }
 
-    modifier exceptFrozen() {
-        require(frozenAccounts[msg.sender] == false);
-        _;
-    }
-
     /**
      * @dev Don't accept any ETH without specific functions being called.
      */
@@ -167,10 +148,11 @@ contract EXOToken is PausableToken {
      * @param _to The address to transfer to.
      * @param _value The amount to be transferred.
      */
-    function transfer(address _to, uint256 _value) public whenNotPaused exceptFrozen returns (bool) {
+    function transfer(address _to, uint256 _value) public whenNotPaused exceptRole("frozen") returns (bool) {
         // Owner and frozen accounts can't receive tokens.
-        require(_to != owner && frozenAccounts[_to] == false);
-        require(msg.sender != owner || balances[owner].sub(_value) >= minBalanceForStakeReward);
+        roleCheck("owner", _to, false);
+        roleCheck("frozen", _to, false);
+        require(msg.sender != owner || balanceOf(owner).sub(_value) >= minBalanceForStakeReward);
 
         return super.transfer(_to, _value);
     }
@@ -182,15 +164,16 @@ contract EXOToken is PausableToken {
      * @param _to The address which you want to transfer to
      * @param _value The amount of tokens to be transferred
      */
-    function transferFrom(address _from, address _to, uint256 _value) public whenNotPaused exceptFrozen returns (bool) {
-        require(frozenAccounts[_from] == false && frozenAccounts[_to] == false);
+    function transferFrom(address _from, address _to, uint256 _value) public whenNotPaused exceptRole("frozen") returns (bool) {
+        roleCheck("frozen", _from, false);
+        roleCheck("frozen", _to, false);
         return super.transferFrom(_from, _to, _value);
     }
 
     /**
      * @dev Start the pre-sale.
      */
-    function startPreSale() external whenNotPaused onlyOwner beforePreSale beforeICO returns (bool) {
+    function startPreSale() external whenNotPaused onlySuperUser beforePreSale beforeICO returns (bool) {
         preSaleStartTime(now);
         preSaleDeadline(preSaleStartTime().add(preSaleDuration));
 
@@ -201,7 +184,7 @@ contract EXOToken is PausableToken {
     /**
      * @dev Buy ICO tokens using ETH.
      */
-    function buyICOTokens() external payable whenNotPaused exceptFrozen duringICO returns (bool) {
+    function buyICOTokens() external payable whenNotPaused exceptRole("frozen") duringICO returns (bool) {
         // Check for serious participants and if we have tokens available.
         uint256 exoBought = msg.value.mul(ICO_ETH_TO_EXO);
         require(availableICOFund() >= exoBought && exoBought >= minICOTokensBoughtEveryPurchase);
@@ -211,7 +194,7 @@ contract EXOToken is PausableToken {
         require(totalICOTokensBoughtByAccount <= maxICOTokensBought);
 
         availableICOFund(availableICOFund().sub(exoBought));
-        balances[msg.sender] = balances[msg.sender].add(exoBought);
+        balanceOf(msg.sender, balanceOf(msg.sender).add(exoBought));
         ICOTokensBought[msg.sender] = totalICOTokensBoughtByAccount;
         totalICOTokensBought(totalICOTokensBought().add(exoBought));
 
@@ -223,7 +206,7 @@ contract EXOToken is PausableToken {
     /**
      * @dev Start the ICO.
      */
-    function startICO() external whenNotPaused onlyOwner afterPreSale beforeICO returns (bool) {
+    function startICO() external whenNotPaused onlySuperUser afterPreSale beforeICO returns (bool) {
         require(availableICOFund() > 0);
 
         ICOStartTime(now);
@@ -236,10 +219,10 @@ contract EXOToken is PausableToken {
     /**
      * @dev Release any remaining ICO fund back to owner after ICO ended.
      */
-    function releaseRemainingICOFundToOwner() external whenNotPaused onlyOwner afterICO returns (bool) {
+    function releaseRemainingICOFundToOwner() external whenNotPaused onlyRole("owner") afterICO returns (bool) {
         require(availableICOFund() > 0);
 
-        balanceOf(msg.sender, balanceOf(msg.sender).add(availableICOFund());
+        balanceOf(msg.sender, balanceOf(msg.sender).add(availableICOFund()));
         Transfer(this, msg.sender, availableICOFund());
         availableICOFund(0);
         return true;
@@ -248,7 +231,7 @@ contract EXOToken is PausableToken {
     /**
      * @dev Send ETH fund raised in ICO for owner.
      */
-    function claimEtherFundRaisedInICO() external whenNotPaused onlyOwner afterICO returns (bool) {
+    function claimEtherFundRaisedInICO() external whenNotPaused onlyRole("owner") afterICO returns (bool) {
         require(this.balance > 0);
 
         // WARNING: All Ethers will be sent, even for non-ICO-related.
@@ -265,8 +248,9 @@ contract EXOToken is PausableToken {
      * The free tokens are added to the _to address' staking balance.
      * @param _to The address which the airdrop is designated to
      */
-    function airdrop(address _to) external whenNotPaused onlyAirdropCarrier exceptFrozen afterICO returns (bool) {
-        require(_to != address(0) && frozenAccounts[_to] == false);
+    function airdrop(address _to) external whenNotPaused onlyRole("airdropCarrier") exceptRole("frozen") afterICO returns (bool) {
+        roleCheck("frozen", _to, false);
+        require(_to != address(0));
         require(airdropped[_to] != true);
         require(availableICOFund() >= airdropAmount);
 
@@ -276,7 +260,7 @@ contract EXOToken is PausableToken {
         stakes[_to].startTime = now;
         airdropped[_to] = true;
 
-        Transfer(airdropCarrier, _to, airdropAmount);
+        Transfer(msg.sender, _to, airdropAmount);
         return true;
     }
 
@@ -286,11 +270,11 @@ contract EXOToken is PausableToken {
      * Deposited stake is added to the staker's staking balance.
      * @param _value The amount of EXO to deposit
      */
-    function depositStake(uint256 _value) external whenNotPaused exceptFrozen exceptOwner afterICO returns (bool) {
-        require(_value > 0 && balances[msg.sender] >= _value);
+    function depositStake(uint256 _value) external whenNotPaused exceptRole("frozen") exceptRole("owner") afterICO returns (bool) {
+        require(_value > 0 && balanceOf(msg.sender) >= _value);
 
         updateStakeBalance();
-        balances[msg.sender] = balances[msg.sender].sub(_value);
+        balanceOf(msg.sender, balanceOf(msg.sender).sub(_value));
         stakes[msg.sender].balance = stakes[msg.sender].balance.add(_value);
 
         DepositStake(msg.sender, _value);
@@ -303,7 +287,7 @@ contract EXOToken is PausableToken {
      * Withdrawn stake is added to the staker's liquid balance.
      * @param _value The amount of EXO to withdraw
      */
-    function withdrawStake(uint256 _value) external whenNotPaused exceptFrozen exceptOwner afterICO returns (bool) {
+    function withdrawStake(uint256 _value) external whenNotPaused exceptRole("frozen") exceptRole("owner") afterICO returns (bool) {
         require(_value > 0 && stakes[msg.sender].balance >= _value);
 
         // No reward if staking has not been for at least 21 days.
@@ -313,7 +297,7 @@ contract EXOToken is PausableToken {
             stakes[msg.sender].startTime = now; // re-stake balance even if no reward
         }
         stakes[msg.sender].balance = stakes[msg.sender].balance.sub(_value);
-        balances[msg.sender] = balances[msg.sender].add(_value);
+        balanceOf(msg.sender, balanceOf(msg.sender).add(_value));
 
         WithdrawStake(msg.sender, _value);
         return true;
@@ -322,14 +306,14 @@ contract EXOToken is PausableToken {
     /**
      * @dev Update a staker's balance with staking interest.
      */
-    function updateStakeBalance() public whenNotPaused exceptFrozen exceptOwner afterICO returns (uint256) {
+    function updateStakeBalance() public whenNotPaused exceptRole("frozen") exceptRole("owner") afterICO returns (uint256) {
         // Has the staking been for at least 21 days?
         require(now.sub(stakes[msg.sender].startTime) >= 21 days);
 
         uint256 interest = calculateInterest();
-        require(balances[owner] >= interest);
+        require(balanceOf(owner) >= interest);
 
-        balances[owner] = balances[owner].sub(interest);
+        balanceOf(owner, balanceOf(owner).sub(interest));
         stakes[msg.sender].balance = stakes[msg.sender].balance.add(interest);
         stakes[msg.sender].startTime = now;
 
@@ -345,8 +329,8 @@ contract EXOToken is PausableToken {
      * The interest is gained every 7 days.
      * For example, staking of 5 EXO for 16 days would yield 5 EXO * 0.0273% (rate per day) * 14 (days).
      */
-    function calculateInterest() public view exceptOwner afterICO returns (uint256) {
-        if (stakes[msg.sender].balance == 0 || stakes[msg.sender].startTime == 0 || balances[owner] == 0) {return 0;}
+    function calculateInterest() public view exceptRole("owner") afterICO returns (uint256) {
+        if (stakes[msg.sender].balance == 0 || stakes[msg.sender].startTime == 0 || balanceOf(owner) == 0) {return 0;}
 
         uint256 totalInterest = 0;
         uint256 stakeDays = 0;
@@ -383,7 +367,7 @@ contract EXOToken is PausableToken {
             totalInterest = totalInterest.add(stakes[msg.sender].balance.mul(5).mul(eligibleStakeDays).div(36500));
         }
 
-        return balances[owner] >= totalInterest ? totalInterest : balances[owner];
+        return balanceOf(owner) >= totalInterest ? totalInterest : balanceOf(owner);
     }
 
     /**
@@ -392,13 +376,11 @@ contract EXOToken is PausableToken {
      * @param _treasuryCarrier The address of new treasury carrier account
      */
     function setTreasuryCarrier(address _oldTreasuryCarrier, address _treasuryCarrier) external whenNotPaused onlySuperUser returns (bool) {
-        require(isTreasuryCarrier(_oldTreasuryCarrier));
-        require(isPreSaleCarrier(_treasuryCarrier) == false && _treasuryCarrier != airdropCarrier);
+        roleCheck("preSaleCarrier", _treasuryCarrier, false);
+        roleCheck("airdropCarrier", _treasuryCarrier, false);
 
         if (_moveFund("treasury", _oldTreasuryCarrier, _treasuryCarrier)) {
-            if (! exoRole.roleTransfer("treasuryCarrier", _oldTreasuryCarrier, _treasuryCarrier)) {
-                throw;
-            }
+            exoRole.roleTransfer("treasuryCarrier", _oldTreasuryCarrier, _treasuryCarrier);
             SetTreasuryCarrier(_oldTreasuryCarrier, _treasuryCarrier);
             return true;
         }
@@ -410,44 +392,16 @@ contract EXOToken is PausableToken {
      *
      * @param _preSaleCarrier The address of new pre-sale carrier account
      */
-    function setPreSaleCarrier(address _oldPreSaleCarrier, address _preSaleCarrier) external whenNotPaused onlyOwner beforeOrDuringPreSale returns (bool) {
-        require(isTreasuryCarrier(_preSaleCarrier) == false && _preSaleCarrier != airdropCarrier);
+    function setPreSaleCarrier(address _oldPreSaleCarrier, address _preSaleCarrier) external whenNotPaused onlySuperUser beforeOrDuringPreSale returns (bool) {
+        roleCheck("treasuryCarrier", _preSaleCarrier, false);
+        roleCheck("airdropCarrier", _preSaleCarrier, false);
 
         if (_moveFund("preSale", _oldPreSaleCarrier, _preSaleCarrier)) {
-            if (! exoRole.roleTransfer("preSaleCarrier", _oldPreSaleCarrier, _preSaleCarrier)) {
-                throw;
-            }
+            exoRole.roleTransfer("preSaleCarrier", _oldPreSaleCarrier, _preSaleCarrier);
             SetPreSaleCarrier(_oldPreSaleCarrier, _preSaleCarrier);
             return true;
         }
         return false;
-    }
-
-    /**
-     * @dev Set the address of airdrop carrier.
-     *
-     * @param _airdropCarrier The only address privileged to airdrop
-     */
-    function setAirdropCarrier(address _airdropCarrier) external whenNotPaused onlyOwner returns (bool) {
-        require(_airdropCarrier != airdropCarrier && _airdropCarrier != owner && isPreSaleCarrier(_airdropCarrier) == false && isTreasuryCarrier(_airdropCarrier) == false);
-
-        SetAirdropCarrier(airdropCarrier, _airdropCarrier);
-        airdropCarrier = _airdropCarrier;
-        return true;
-    }
-
-    /**
-     * @dev Freeze or unfreeze an account.
-     *
-     * @param _targetAccount The target account to be frozen/unfrozen
-     * @param _isFrozen //
-     */
-    function freezeAccount(address _targetAccount, bool _isFrozen) external whenNotPaused onlyOwner returns (bool) {
-        require(_targetAccount != owner);
-
-        frozenAccounts[_targetAccount] = _isFrozen;
-        FreezeAccount(_targetAccount, _isFrozen);
-        return true;
     }
 
     /**
@@ -469,40 +423,31 @@ contract EXOToken is PausableToken {
     }
 
     /**
-     * @dev Get the frozen status of an account.
-     *
-     * @param _account //
-     */
-    function isFrozen(address _account) external view returns (bool) {
-        return frozenAccounts[_account];
-    }
-
-    /**
      * @dev Move remaining fund to a new carrier.
      *
      * @param _lockedFundName The name of fund to be released if the first carrier is set
      * @param _oldCarrier The old carrier of fund
      * @param _newCarrier The new carrier of fund
      */
-    function _moveFund(bytes32 _lockedFundName, address _oldCarrier, address _newCarrier) internal onlyOwner returns (bool) {
+    function _moveFund(bytes32 _lockedFundName, address _oldCarrier, address _newCarrier) internal onlySuperUser returns (bool) {
         // Check for non-sensical address and possibility of abuse.
         require(_oldCarrier != _newCarrier && _newCarrier != address(0) && _newCarrier != owner);
-        require(balances[_newCarrier] == 0); // burn check!
+        require(balanceOf(_newCarrier) == 0); // burn check!
 
         uint256 lockedFund = lockedFunds[_lockedFundName];
 
         if (lockedFund == 0 && _oldCarrier != address(0)) {
-            assert(balances[_oldCarrier] > 0);
+            assert(balanceOf(_oldCarrier) > 0);
             // Move fund from old carrier to new carrier.
             // WARNING: Everything will be transferred.
-            balances[_newCarrier] = balances[_oldCarrier];
-            balances[_oldCarrier] = 0;
-            Transfer(_oldCarrier, _newCarrier, balances[_newCarrier]);
+            balanceOf(_newCarrier, balanceOf(_oldCarrier));
+            balanceOf(_oldCarrier, 0);
+            Transfer(_oldCarrier, _newCarrier, balanceOf(_newCarrier));
         } else if (lockedFund > 0 && _oldCarrier == address(0)) {
             // Release fund to new carrier.
-            balances[_newCarrier] = lockedFund;
+            balanceOf(_newCarrier, lockedFund);
             lockedFunds[_lockedFundName] = 0;
-            Transfer(this, _newCarrier, balances[_newCarrier]);
+            Transfer(this, _newCarrier, balanceOf(_newCarrier));
         } else {
             // Revert if anything unexpected happens.
             revert();
@@ -551,20 +496,6 @@ contract EXOToken is PausableToken {
      */
     function totalICOTokensBought() public view returns (uint256) {
         return exoStorage.getUint(keccak256("token.totalICOTokensBought"));
-    }
-
-    /**
-     * @dev Check an address' access to treasury carrier role.
-     */
-    function isTreasuryCarrier(address _address) internal view returns (bool) {
-        return exoStorage.getBool(keccak256("access.role", "treasuryCarrier", _address));
-    }
-
-    /**
-     * @dev Check an address' access to pre-sale carrier role.
-     */
-    function isPreSaleCarrier(address _address) internal view returns (bool) {
-        return exoStorage.getBool(keccak256("access.role", "preSaleCarrier", _address));
     }
 
     /**

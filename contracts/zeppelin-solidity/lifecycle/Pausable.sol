@@ -31,7 +31,7 @@ contract Pausable is EXOBase {
   /**
    * @dev called by the owner to pause, triggers stopped state
    */
-  function pause() onlyOwner whenNotPaused public {
+  function pause() onlyRole("owner") whenNotPaused public {
     paused = true;
     Pause();
   }
@@ -39,7 +39,7 @@ contract Pausable is EXOBase {
   /**
    * @dev called by the owner to unpause, returns to normal state
    */
-  function unpause() onlyOwner whenPaused public {
+  function unpause() onlyRole("owner") whenPaused public {
     paused = false;
     Unpause();
   }
