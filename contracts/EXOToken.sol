@@ -35,7 +35,7 @@ contract EXOToken is PausableToken {
     event SetTreasuryCarrier(address indexed oldCarrier, address indexed newCarrier);
     event SetPreSaleCarrier(address indexed oldCarrier, address indexed newCarrier);
     event SetAirdropCarrier(address indexed oldCarrier, address indexed newCarrier);
-    
+
     /**
      * @dev Set token information.
      *
@@ -153,7 +153,7 @@ contract EXOToken is PausableToken {
     }
 
     /**
-     * @dev Transfer tokens from one address to another
+     * @dev Transfer tokens from one address to another.
      *
      * @param _from The address which you want to send tokens from
      * @param _to The address which you want to transfer to
