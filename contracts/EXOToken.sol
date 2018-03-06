@@ -2,7 +2,7 @@ pragma solidity 0.4.18;
 
 import "./zeppelin-solidity/token/ERC20/PausableToken.sol";
 import "./EXOBase.sol";
-import "./EXORole.sol";
+import "./interfaces/EXORoleInterface.sol";
 
 /**
  * @title EXO Token
@@ -24,7 +24,7 @@ contract EXOToken is PausableToken {
     uint256 public maxICOTokensBought; // by one account for all purchases
     uint256 public airdropAmount;
 
-    EXORole private exoRole = EXORole(0);
+    EXORoleInterface private exoRole = EXORoleInterface(0);
 
     event StartPreSale(uint256 indexed startTime, uint256 indexed deadline);
     event StartICO(uint256 indexed startTime, uint256 indexed deadline);
@@ -66,7 +66,7 @@ contract EXOToken is PausableToken {
     ) EXOBase("EXOToken", _exoStorageAddress) public
     {
         roleCheck("owner", msg.sender, true);
-        exoRole = EXORole(exoStorage.getAddress(keccak256("contract.name", "EXORole")));
+        exoRole = EXORoleInterface(exoStorage.getAddress(keccak256("contract.name", "EXORole")));
 
         bool _isUpgrade = exoStorage.getBool(keccak256("contract.storage.initialized"));
         if (_isUpgrade == false) {

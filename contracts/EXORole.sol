@@ -1,6 +1,7 @@
 pragma solidity 0.4.18;
 
 import "./EXOBase.sol";
+import "./interfaces/EXORoleInterface.sol";
 import "./interfaces/EXOStorageInterface.sol";
 
 /**
@@ -8,7 +9,7 @@ import "./interfaces/EXOStorageInterface.sol";
  *
  * @dev Allow role-based access on EXO contracts.
  */
-contract EXORole is EXOBase {
+contract EXORole is EXORoleInterface, EXOBase {
     event RoleAdded(string _roleName, address _address);
     event RoleRemoved(string _roleName, address _address);
     event OwnershipTransferred(address indexed _previousOwner, address indexed _newOwner);
