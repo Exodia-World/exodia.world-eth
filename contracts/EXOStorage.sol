@@ -1,11 +1,13 @@
 pragma solidity 0.4.18;
 
+import "./interfaces/EXOStorageInterface.sol";
+
 /**
  * @title EXO Eternal Storage
  *
  * @dev Responsible for data storage and address resolution for other EXO contracts.
  */
-contract EXOStorage {
+contract EXOStorage is EXOStorageInterface {
     mapping(bytes32 => uint256) private uIntStorage;
     mapping(bytes32 => string) private stringStorage;
     mapping(bytes32 => address) private addressStorage;
