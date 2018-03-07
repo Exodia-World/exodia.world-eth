@@ -50,7 +50,7 @@ contract BasicToken is ERC20Basic, EXOBase {
    * @param _owner The address to query the the balance of
    * @param _balance The new balance owned by the passed address
    */
-  function balanceOf(address _owner, uint256 _balance) internal onlyLatestVersionOf(this) {
+  function balanceOf(address _owner, uint256 _balance) internal {
       exoStorage.setUint(keccak256("token.balances", _owner), _balance);
   }
 
@@ -59,7 +59,7 @@ contract BasicToken is ERC20Basic, EXOBase {
    *
    * @param _totalSupply //
    */
-  function totalSupply(uint256 _totalSupply) internal onlyLatestVersionOf(this) {
+  function totalSupply(uint256 _totalSupply) internal {
     exoStorage.setUint(keccak256("token.totalSupply"), _totalSupply);
   }
 }
