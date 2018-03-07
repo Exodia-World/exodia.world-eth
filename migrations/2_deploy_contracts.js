@@ -28,38 +28,38 @@ module.exports = async function(deployer) {
       // 2. name => address -- allow us to know its address by name
 
       // Register EXOUpgrade contract.
-      await EXOStorage.setAddress(
-        web3.utils.sha3('contract.address', EXOUpgrade.address),
+      await exoStorage.setAddress(
+        web3.sha3('contract.address', EXOUpgrade.address),
         EXOUpgrade.address
       );
-      await EXOStorage.setAddress(
-        web3.utils.sha3('contract.name', 'EXOUpgrade'),
+      await exoStorage.setAddress(
+        web3.sha3('contract.name', 'EXOUpgrade'),
         EXOUpgrade.address
       );
 
       // Register EXORole contract.
-      await EXOStorage.setAddress(
-        web3.utils.sha3('contract.address', EXORole.address),
+      await exoStorage.setAddress(
+        web3.sha3('contract.address', EXORole.address),
         EXORole.address
       );
-      await EXOStorage.setAddress(
-        web3.utils.sha3('contract.name', 'EXORole'),
+      await exoStorage.setAddress(
+        web3.sha3('contract.name', 'EXORole'),
         EXORole.address
       );
 
       // Register EXOToken contract.
-      await EXOStorage.setAddress(
-        web3.utils.sha3('contract.address', EXOToken.address),
+      await exoStorage.setAddress(
+        web3.sha3('contract.address', EXOToken.address),
         EXOToken.address
       );
-      await EXOStorage.setAddress(
-        web3.utils.sha3('contract.name', 'EXOToken'),
+      await exoStorage.setAddress(
+        web3.sha3('contract.name', 'EXOToken'),
         EXOToken.address
       );
 
       // Disable direct access by owner to EXOStorage after initialization.
-      await EXOStorage.setBool(
-        web3.utils.sha3('contract.storage.initialized'),
+      await exoStorage.setBool(
+        web3.sha3('contract.storage.initialized'),
         true
       );
       return deployer;
