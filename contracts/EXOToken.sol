@@ -24,8 +24,6 @@ contract EXOToken is PausableToken {
     uint256 public maxICOTokensBought; // by one account for all purchases
     uint256 public airdropAmount;
 
-    EXORoleInterface private exoRole = EXORoleInterface(0);
-
     event StartPreSale(uint256 indexed startTime, uint256 indexed deadline);
     event StartICO(uint256 indexed startTime, uint256 indexed deadline);
     event TransferETH(address indexed from, address indexed to, uint256 value);
@@ -66,7 +64,6 @@ contract EXOToken is PausableToken {
     ) EXOBase("EXOToken", _exoStorageAddress) public
     {
         roleCheck("owner", msg.sender, true);
-        exoRole = EXORoleInterface(exoStorage.getAddress(keccak256("contract.name", "EXORole")));
 
         bool _isUpgrade = exoStorage.getBool(keccak256("contract.storage.initialized"));
         if (_isUpgrade == false) {
@@ -380,7 +377,7 @@ contract EXOToken is PausableToken {
         roleCheck("airdropCarrier", _treasuryCarrier, false);
 
         if (_moveFund("treasury", _oldTreasuryCarrier, _treasuryCarrier)) {
-            exoRole.roleTransfer("treasuryCarrier", _oldTreasuryCarrier, _treasuryCarrier);
+            exoRole().roleTransfer("treasuryCarrier", _oldTreasuryCarrier, _treasuryCarrier);
             SetTreasuryCarrier(_oldTreasuryCarrier, _treasuryCarrier);
             return true;
         }
@@ -398,7 +395,7 @@ contract EXOToken is PausableToken {
         roleCheck("airdropCarrier", _preSaleCarrier, false);
 
         if (_moveFund("preSale", _oldPreSaleCarrier, _preSaleCarrier)) {
-            exoRole.roleTransfer("preSaleCarrier", _oldPreSaleCarrier, _preSaleCarrier);
+            exoRole().roleTransfer("preSaleCarrier", _oldPreSaleCarrier, _preSaleCarrier);
             SetPreSaleCarrier(_oldPreSaleCarrier, _preSaleCarrier);
             return true;
         }
@@ -437,6 +434,13 @@ contract EXOToken is PausableToken {
         }
 
         return true;
+    }
+
+    /**
+     * @dev Get the latest EXORole contract.
+     */
+    function exoRole() private view returns (EXORoleInterface) {
+        return EXORoleInterface(exoStorage.getAddress(keccak256("contract.name", "EXORole")));
     }
 
     /**
