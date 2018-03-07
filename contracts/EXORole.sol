@@ -10,25 +10,25 @@ import "./interfaces/EXOStorageInterface.sol";
  * @dev Allow role-based access on EXO contracts.
  */
 contract EXORole is EXORoleInterface, EXOBase {
-    event RoleAdded(string _roleName, address _address);
-    event RoleRemoved(string _roleName, address _address);
-    event OwnershipTransferred(address indexed _previousOwner, address indexed _newOwner);
+    event RoleAdded(string roleName, address account);
+    event RoleRemoved(string roleName, address account);
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
     function EXORole(address _exoStorageAddress) EXOBase("EXORole", _exoStorageAddress) public {
         version = 1;
     }
 
     /**
-     * @dev Allows the current owner to transfer control of the contract to a newOwner.
+     * @dev Allow the current owner to transfer control of the contract to a newOwner.
      *
      * @param _newOwner The address to transfer ownership to
      */
     function transferOwnership(address _newOwner) public onlyLatestVersionOf(this) onlyRole("owner") {
         require(_newOwner != address(0));
-        roleCheck("owner", msg.sender, true); // check if the role exists 
 
         exoStorage.deleteBool(keccak256("access.role", "owner", msg.sender));
         exoStorage.setBool(keccak256("access.role",  "owner", _newOwner), true);
+        OwnershipTransferred(msg.sender, _newOwner);
     }
 
     /**
@@ -68,7 +68,7 @@ contract EXORole is EXORoleInterface, EXOBase {
      * @dev Remove an address' access to this role.
      */
     function _roleRemove(string _role, address _address) internal {
-        require(!roleHas("owner", _address)); // only an owner can transfer its access
+        require(!roleHas("owner", _address)); // only an owner can remove its access
 
         exoStorage.deleteBool(keccak256("access.role", _role, _address));
         RoleRemoved(_role, _address);

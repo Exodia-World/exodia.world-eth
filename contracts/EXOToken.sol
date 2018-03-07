@@ -437,13 +437,6 @@ contract EXOToken is PausableToken {
     }
 
     /**
-     * @dev Get the latest EXORole contract.
-     */
-    function exoRole() private view returns (EXORoleInterface) {
-        return EXORoleInterface(exoStorage.getAddress(keccak256("contract.name", "EXORole")));
-    }
-
-    /**
      * @dev Get the primary holder.
      */
     function primaryHolder() public view returns (address) {
@@ -535,6 +528,13 @@ contract EXOToken is PausableToken {
      */
     function stakeStartTimeOf(address _staker) public view returns (uint256) {
         return exoStorage.getUint(keccak256("token.stakes", "startTime", _staker));
+    }
+
+    /**
+     * @dev Get the latest EXORole contract.
+     */
+    function exoRole() private view returns (EXORoleInterface) {
+        return EXORoleInterface(exoStorage.getAddress(keccak256("contract.name", "EXORole")));
     }
 
     /**

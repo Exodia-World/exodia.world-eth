@@ -33,7 +33,7 @@ contract EXOStorage is EXOStorageInterface {
         boolStorage[keccak256("access.role", "owner", msg.sender)] = true;
     }
 
-    /* Get Methods */ 
+    /* Get Methods */
 
     function getAddress(bytes32 _key) external view returns (address) {
         return addressStorage[_key];
@@ -76,17 +76,17 @@ contract EXOStorage is EXOStorageInterface {
     function setBytes(bytes32 _key, bytes _value) external onlyLatestNetworkContract {
         bytesStorage[_key] = _value;
     }
-    
+
     function setBool(bytes32 _key, bool _value) external onlyLatestNetworkContract {
         boolStorage[_key] = _value;
     }
-    
+
     function setInt(bytes32 _key, int _value) external onlyLatestNetworkContract {
         intStorage[_key] = _value;
     }
 
     /* Delete Methods */
-    
+
     function deleteAddress(bytes32 _key) external onlyLatestNetworkContract {
         delete addressStorage[_key];
     }
@@ -102,11 +102,11 @@ contract EXOStorage is EXOStorageInterface {
     function deleteBytes(bytes32 _key) external onlyLatestNetworkContract {
         delete bytesStorage[_key];
     }
-    
+
     function deleteBool(bytes32 _key) external onlyLatestNetworkContract {
         delete boolStorage[_key];
     }
-    
+
     function deleteInt(bytes32 _key) external onlyLatestNetworkContract {
         delete intStorage[_key];
     }

@@ -21,7 +21,7 @@ contract EXOBase {
      * @dev Only allow access from the latest version of the EXO contract.
      */
     modifier onlyLatestVersionOf(address _contract) {
-        require(_contract == exoStorage.getAddress(keccak256("contract.name", contractName)));
+        require(address(_contract) == exoStorage.getAddress(keccak256("contract.name", contractName)));
         _;
     }
 
@@ -39,7 +39,7 @@ contract EXOBase {
         roleCheck(_role, msg.sender, false);
         _;
     }
-  
+
     /**
      * @dev Check if an address has this role.
      */
