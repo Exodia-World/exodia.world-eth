@@ -27,7 +27,7 @@ contract('EXORole', accounts => {
   const owner = accounts[0];
 
   it('should transfer ownership to a new address if owner requests it', () => {
-    return newEXORole().then(async exoRole => {
+    return EXORole.deployed().then(async exoRole => {
       const exoStorage = await EXOStorage.deployed();
       const newOwner = accounts[3];
       const isOwner = await exoStorage.getBool.call(Web3Utils.soliditySha3('access.role', 'owner', owner));
