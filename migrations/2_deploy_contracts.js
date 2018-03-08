@@ -1,3 +1,4 @@
+const Web3Utils = require('web3-utils');
 const EXOStorage = artifacts.require("EXOStorage");
 const EXOUpgrade = artifacts.require("EXOUpgrade");
 const EXORole = artifacts.require("EXORole");
@@ -29,37 +30,37 @@ module.exports = async function(deployer) {
 
       // Register EXOUpgrade contract.
       await exoStorage.setAddress(
-        web3.sha3('contract.address', EXOUpgrade.address),
+        Web3Utils.soliditySha3('contract.address', EXOUpgrade.address),
         EXOUpgrade.address
       );
       await exoStorage.setAddress(
-        web3.sha3('contract.name', 'EXOUpgrade'),
+        Web3Utils.soliditySha3('contract.name', 'EXOUpgrade'),
         EXOUpgrade.address
       );
 
       // Register EXORole contract.
       await exoStorage.setAddress(
-        web3.sha3('contract.address', EXORole.address),
+        Web3Utils.soliditySha3('contract.address', EXORole.address),
         EXORole.address
       );
       await exoStorage.setAddress(
-        web3.sha3('contract.name', 'EXORole'),
+        Web3Utils.soliditySha3('contract.name', 'EXORole'),
         EXORole.address
       );
 
       // Register EXOToken contract.
       await exoStorage.setAddress(
-        web3.sha3('contract.address', EXOToken.address),
+        Web3Utils.soliditySha3('contract.address', EXOToken.address),
         EXOToken.address
       );
       await exoStorage.setAddress(
-        web3.sha3('contract.name', 'EXOToken'),
+        Web3Utils.soliditySha3('contract.name', 'EXOToken'),
         EXOToken.address
       );
 
       // Disable direct access by owner to EXOStorage after initialization.
       await exoStorage.setBool(
-        web3.sha3('contract.storage.initialized'),
+        Web3Utils.soliditySha3('contract.storage.initialized'),
         true
       );
       return deployer;
