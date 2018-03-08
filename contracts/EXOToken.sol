@@ -10,11 +10,11 @@ import "./interfaces/EXORoleInterface.sol";
  * @dev Implementation of the EXO Token by Exodia.World.
  */
 contract EXOToken is PausableToken {
-    string constant NAME = "EXO";
-    string constant SYMBOL = "EXO";
-    uint8 constant DECIMALS = 18;
-    uint256 constant PRESALE_ETH_TO_EXO = 7300;
-    uint256 constant ICO_ETH_TO_EXO = 3650;
+    string public constant NAME = "EXO";
+    string public constant SYMBOL = "EXO";
+    uint8 public constant DECIMALS = 18;
+    uint256 public constant PRESALE_ETH_TO_EXO = 7300;
+    uint256 public constant ICO_ETH_TO_EXO = 3650;
 
     uint256 public minBalanceForStakeReward;
     uint256 public preSaleDuration; // in seconds
@@ -164,8 +164,12 @@ contract EXOToken is PausableToken {
 
     /**
      * @dev Start the pre-sale.
+     *
+     * Note: The pre-sale carrier should be set first before running this function.
      */
     function startPreSale() external whenNotPaused onlySuperUser beforePreSale beforeICO returns (bool) {
+        require(lockedFundOf("preSale") > 0);
+
         preSaleStartTime(now);
         preSaleDeadline(preSaleStartTime().add(preSaleDuration));
 
@@ -373,6 +377,10 @@ contract EXOToken is PausableToken {
      * @param _treasuryCarrier The address of new treasury carrier account
      */
     function setTreasuryCarrier(address _oldTreasuryCarrier, address _treasuryCarrier) external whenNotPaused onlySuperUser returns (bool) {
+        if (_oldTreasuryCarrier != address(0)) {
+            // Is it really the previous carrier?
+            roleCheck("treasuryCarrier", _oldTreasuryCarrier, true);
+        }
         roleCheck("preSaleCarrier", _treasuryCarrier, false);
         roleCheck("airdropCarrier", _treasuryCarrier, false);
 
@@ -391,6 +399,10 @@ contract EXOToken is PausableToken {
      * @param _preSaleCarrier The address of new pre-sale carrier account
      */
     function setPreSaleCarrier(address _oldPreSaleCarrier, address _preSaleCarrier) external whenNotPaused onlySuperUser beforeOrDuringPreSale returns (bool) {
+        if (_oldPreSaleCarrier != address(0)) {
+            // Is it really the previous carrier?
+            roleCheck("preSaleCarrier", _oldPreSaleCarrier, true);
+        }
         roleCheck("treasuryCarrier", _preSaleCarrier, false);
         roleCheck("airdropCarrier", _preSaleCarrier, false);
 

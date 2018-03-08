@@ -76,7 +76,7 @@ contract('EXORole', accounts => {
 
   it('should NOT transfer ownership to a new address if the new address equals ZERO', () => {
     return newEXORole().then(async exoRole => {
-      const newOwner = 0;
+      const newOwner = '0x0000000000000000000000000000000000000000';
       const isOwner = await exoStorage.getBool.call(Web3Utils.soliditySha3('access.role', 'owner', owner));
       assert(isOwner, 'Owner address should be correct');
 
@@ -144,7 +144,7 @@ contract('EXORole', accounts => {
   it('should NOT transfer role access to a new address if the new address equals ZERO', () => {
     return newEXORole().then(async exoRole => {
       const oldAddress = accounts[4];
-      const newAddress = 0;
+      const newAddress = '0x0000000000000000000000000000000000000000';
       await exoRole.roleAdd('admin', admin);
       await exoRole.roleAdd('basic', oldAddress, {from: admin});
 
@@ -242,7 +242,7 @@ contract('EXORole', accounts => {
 
   it('should NOT add role access to a new address if the new address equals ZERO', () => {
     return newEXORole().then(async exoRole => {
-      const newAddress = 0;
+      const newAddress = '0x0000000000000000000000000000000000000000';
       await exoRole.roleAdd('admin', admin);
 
       let newAddressHasRole = await exoStorage.getBool.call(Web3Utils.soliditySha3('access.role', 'basic', newAddress));
