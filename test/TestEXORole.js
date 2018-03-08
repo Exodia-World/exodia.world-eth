@@ -1,25 +1,28 @@
 const Web3Utils = require('web3-utils');
 const EXOStorage = artifacts.require('EXOStorage');
 const EXORole = artifacts.require('EXORole');
+var exoStorage;
 
 const newEXORole = () => {
-  return EXOStorage.new().then(async exoStorage => {
-    const exoRole = await EXORole.new(EXOStorage.address);
-    // Register EXORole contract.
-    await exoStorage.setAddress(
-      Web3Utils.soliditySha3('contract.address', EXORole.address),
-      EXORole.address
-    );
-    await exoStorage.setAddress(
-      Web3Utils.soliditySha3('contract.name', 'EXORole'),
-      EXORole.address
-    );
-    // Disable direct access by owner to EXOStorage after initialization.
-    await exoStorage.setBool(
-      Web3Utils.soliditySha3('contract.storage.initialized'),
-      true
-    );
-    return exoRole;
+  return EXOStorage.new().then(_exoStorage => {
+    exoStorage = _exoStorage;
+    return EXORole.new(exoStorage.address).then(async exoRole => {
+      // Register EXORole contract.
+      await exoStorage.setAddress(
+        Web3Utils.soliditySha3('contract.address', exoRole.address),
+        exoRole.address
+      );
+      await exoStorage.setAddress(
+        Web3Utils.soliditySha3('contract.name', 'EXORole'),
+        exoRole.address
+      );
+      // Disable direct access by owner to EXOStorage after initialization.
+      await exoStorage.setBool(
+        Web3Utils.soliditySha3('contract.storage.initialized'),
+        true
+      );
+      return exoRole;
+    });
   });
 };
 
@@ -27,8 +30,7 @@ contract('EXORole', accounts => {
   const owner = accounts[0];
 
   it('should transfer ownership to a new address if owner requests it', () => {
-    return EXORole.deployed().then(async exoRole => {
-      const exoStorage = await EXOStorage.deployed();
+    return newEXORole().then(async exoRole => {
       const newOwner = accounts[3];
       const isOwner = await exoStorage.getBool.call(Web3Utils.soliditySha3('access.role', 'owner', owner));
       assert(isOwner, 'Owner address should be correct');
