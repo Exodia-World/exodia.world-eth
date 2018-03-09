@@ -105,11 +105,11 @@ contract('EXORole', accounts => {
 
           for (let i = 0; i < result.logs.length; i++) {
             const log = result.logs[i];
-            if (log.event === 'RoleRemove') {
-              assert.equal(log.args.role, 'basic', 'The published role should be correct');
+            if (log.event === 'RoleRemoved') {
+              assert.equal(log.args.roleName, 'basic', 'The published role should be correct');
               assert.equal(log.args.account, oldAddress, 'The published removed account should be correct');
-            } else if (log.event === 'RoleAdd') {
-              assert.equal(log.args.role, 'basic', 'The published role should be correct');
+          } else if (log.event === 'RoleAdded') {
+              assert.equal(log.args.roleName, 'basic', 'The published role should be correct');
               assert.equal(log.args.account, newAddress, 'The published added account should be correct');
             }
           }
@@ -210,8 +210,8 @@ contract('EXORole', accounts => {
 
           for (let i = 0; i < result.logs.length; i++) {
             const log = result.logs[i];
-            if (log.event === 'RoleAdd') {
-              assert.equal(log.args.role, 'basic', 'The published role should be correct');
+            if (log.event === 'RoleAdded') {
+              assert.equal(log.args.roleName, 'basic', 'The published role should be correct');
               assert.equal(log.args.account, newAddress, 'The published added account should be correct');
             }
           }
@@ -276,6 +276,24 @@ contract('EXORole', accounts => {
     });
   });
 
+  it('should NOT add "frozen" role access to a new address if the new address is owner', () => {
+    return newEXORole().then(async exoRole => {
+      const newAddress = owner;
+      await exoRole.roleAdd('admin', admin);
+
+      let newAddressHasRole = await exoStorage.getBool.call(Web3Utils.soliditySha3('access.role', 'frozen', newAddress));
+      assert(! newAddressHasRole, 'The new address should not yet have the role');
+
+      exoRole.roleAdd('frozen', newAddress, {from: admin})
+        .then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 0, 'The addition should fail');
+
+          newAddressHasRole = await exoStorage.getBool.call(Web3Utils.soliditySha3('access.role', 'frozen', newAddress));
+          assert(! newAddressHasRole, 'The new address should still not have the role');
+        });
+    });
+  });
+
   it('should remove role access of an address if a super user requests it', () => {
     return newEXORole().then(async exoRole => {
       const newAddress = accounts[3];
@@ -291,8 +309,8 @@ contract('EXORole', accounts => {
 
           for (let i = 0; i < result.logs.length; i++) {
             const log = result.logs[i];
-            if (log.event === 'RoleRemove') {
-              assert.equal(log.args.role, 'basic', 'The published role should be correct');
+            if (log.event === 'RoleRemoved') {
+              assert.equal(log.args.roleName, 'basic', 'The published role should be correct');
               assert.equal(log.args.account, newAddress, 'The published removed account should be correct');
             }
           }

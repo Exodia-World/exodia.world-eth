@@ -23,7 +23,7 @@ contract EXORole is EXORoleInterface, EXOBase {
      *
      * @param _newOwner The address to transfer ownership to
      */
-    function transferOwnership(address _newOwner) public onlyLatestVersionOf(this) onlyRole("owner") {
+    function transferOwnership(address _newOwner) external onlyLatestVersionOf(this) onlyRole("owner") {
         require(_newOwner != address(0));
 
         exoStorage.deleteBool(keccak256("access.role", "owner", msg.sender));
@@ -34,7 +34,7 @@ contract EXORole is EXORoleInterface, EXOBase {
     /**
      * @dev Transfer an address' access to this role to another address.
      */
-    function roleTransfer(string _role, address _oldAddress, address _address) public onlyLatestVersionOf(this) onlySuperUser {
+    function roleTransfer(string _role, address _oldAddress, address _address) external onlyLatestVersionOf(this) onlySuperUser {
         _roleRemove(_role, _oldAddress);
         _roleAdd(_role, _address);
     }
@@ -42,32 +42,24 @@ contract EXORole is EXORoleInterface, EXOBase {
     /**
      * @dev Give an address' access to this role.
      */
-    function roleAdd(string _role, address _address) public onlyLatestVersionOf(this) onlySuperUser {
+    function roleAdd(string _role, address _address) external onlyLatestVersionOf(this) onlySuperUser {
         _roleAdd(_role, _address);
     }
 
     /**
      * @dev Remove an address' access to this role.
      */
-    function roleRemove(string _role, address _address) public onlyLatestVersionOf(this) onlySuperUser {
+    function roleRemove(string _role, address _address) external onlyLatestVersionOf(this) onlySuperUser {
         _roleRemove(_role, _address);
-    }
-
-    /**
-     * @dev Check if an address has this role.
-     *
-     * A proxy to EXOBase's roleHas function.
-     */
-    function hasRoleAccess(string _role, address _address) external view returns (bool) {
-        return roleHas(_role, _address);
     }
 
     /**
      * @dev Give an address' access to this role.
      */
     function _roleAdd(string _role, address _address) internal {
-        require(_address != 0x0);
+        require(_address != address(0));
         require(keccak256(_role) != keccak256("owner")); // only one owner to rule them all
+        require(! roleHas("owner", _address) || keccak256(_role) != keccak256("frozen")); // owner can't be frozen
 
         exoStorage.setBool(keccak256("access.role", _role, _address), true);
         RoleAdded(_role, _address);
@@ -77,7 +69,7 @@ contract EXORole is EXORoleInterface, EXOBase {
      * @dev Remove an address' access to this role.
      */
     function _roleRemove(string _role, address _address) internal {
-        require(!roleHas("owner", _address)); // only an owner can remove its access
+        require(! roleHas("owner", _address)); // no one can remove owner's access
 
         exoStorage.deleteBool(keccak256("access.role", _role, _address));
         RoleRemoved(_role, _address);

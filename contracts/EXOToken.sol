@@ -371,8 +371,9 @@ contract EXOToken is PausableToken {
     }
 
     /**
-     * @dev Set new treasury carrier account and transfer fund into its wallet.
+     * @dev Transfer fund into new treasury carrier's address and publish it.
      *
+     * At this point, there must be two addresses with access to treasury carrier role.
      * @param _oldTreasuryCarrier The address of old treasury carrier account
      * @param _treasuryCarrier The address of new treasury carrier account
      */
@@ -381,18 +382,11 @@ contract EXOToken is PausableToken {
             // Is it really the previous carrier?
             roleCheck("treasuryCarrier", _oldTreasuryCarrier, true);
         }
+        roleCheck("treasuryCarrier", _treasuryCarrier, true);
         roleCheck("preSaleCarrier", _treasuryCarrier, false);
         roleCheck("airdropCarrier", _treasuryCarrier, false);
 
         if (_moveFund("treasury", _oldTreasuryCarrier, _treasuryCarrier)) {
-            if (! exoRole().delegatecall(
-                bytes4(keccak256("roleTransfer(string,address,address)")),
-                "treasuryCarrier",
-                _oldTreasuryCarrier,
-                _treasuryCarrier
-            )) {
-                revert();
-            }
             SetTreasuryCarrier(_oldTreasuryCarrier, _treasuryCarrier);
             return true;
         }
@@ -400,8 +394,9 @@ contract EXOToken is PausableToken {
     }
 
     /**
-     * @dev Set new pre-sale carrier account and transfer fund into its wallet.
+     * @dev Transfer fund into new pre-sale carrier's address and publish it.
      *
+     * At this point, there must be two addresses with access to pre-sale carrier role.
      * @param _oldPreSaleCarrier The address of old pre-sale carrier account
      * @param _preSaleCarrier The address of new pre-sale carrier account
      */
@@ -410,11 +405,11 @@ contract EXOToken is PausableToken {
             // Is it really the previous carrier?
             roleCheck("preSaleCarrier", _oldPreSaleCarrier, true);
         }
+        roleCheck("preSaleCarrier", _preSaleCarrier, true);
         roleCheck("treasuryCarrier", _preSaleCarrier, false);
         roleCheck("airdropCarrier", _preSaleCarrier, false);
 
         if (_moveFund("preSale", _oldPreSaleCarrier, _preSaleCarrier)) {
-            exoRole().roleTransfer("preSaleCarrier", _oldPreSaleCarrier, _preSaleCarrier);
             SetPreSaleCarrier(_oldPreSaleCarrier, _preSaleCarrier);
             return true;
         }
