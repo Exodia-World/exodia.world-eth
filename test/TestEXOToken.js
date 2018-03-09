@@ -40,7 +40,7 @@ const newEXOToken = (changes = {}) => {
       };
       Object.assign(argsObj, changes);
       const args = Object.values(argsObj);
-      return EXOToken.new(exoStorage.address, ...args).then(async exoToken => {
+      return EXOToken.new(exoStorage.address, ...args, {gas: 8000000}).then(async exoToken => {
         // Register EXORole contract.
         await exoStorage.setAddress(
           Web3Utils.soliditySha3('contract.address', exoRole.address),
@@ -1497,7 +1497,7 @@ contract('EXOToken', accounts => {
           const lockedFund = await exoToken.lockedFundOf.call('treasury');
           const newCarrierBalance = await exoToken.balanceOf.call(treasuryCarrier);
           assert(lockedFund.eq(new BN(0)), 'Locked fund should be ZERO');
-          assert(await exoRole.roleHas('treasuryCarrier', treasuryCarrier), 'New carrier should be set');
+          assert(await exoRole.hasRoleAccess('treasuryCarrier', treasuryCarrier), 'New carrier should be set');
           assert(newCarrierBalance.eq(initialLockedFund), 'New carrier\'s balance should be correct');
         });
     });
@@ -1531,7 +1531,7 @@ contract('EXOToken', accounts => {
           const newCarrierBalance = await exoToken.balanceOf.call(newCarrier);
           assert(lockedFund.eq(new BN(0)), 'Locked fund should be ZERO');
           assert(oldCarrierBalance.eq(new BN(0)), 'Old carrier\'s balance should be ZERO');
-          assert(await exoRole.roleHas('treasuryCarrier', newCarrier), 'New carrier should be set');
+          assert(await exoRole.hasRoleAccess('treasuryCarrier', newCarrier), 'New carrier should be set');
           assert(newCarrierBalance.eq(initialOldCarrierBalance), 'New carrier\'s balance should be correct');
         });
     });
@@ -1550,7 +1550,7 @@ contract('EXOToken', accounts => {
           const lockedFund = await exoToken.lockedFundOf.call('treasury');
           const accountBalance = await exoToken.balanceOf.call(treasuryCarrier);
           assert(lockedFund.eq(initialLockedFund), 'Locked fund should be unchanged');
-          assert(! await exoRole.roleHas('treasuryCarrier', treasuryCarrier), 'New carrier should NOT be set');
+          assert(! await exoRole.hasRoleAccess('treasuryCarrier', treasuryCarrier), 'New carrier should NOT be set');
           assert(accountBalance.eq((new BN(1)).mul(exp)), 'Account\'s balance should be unchanged');
         });
     });
@@ -1571,8 +1571,8 @@ contract('EXOToken', accounts => {
           const lockedFund = await exoToken.lockedFundOf.call('treasury');
           const accountBalance = await exoToken.balanceOf.call(newCarrier);
           assert(lockedFund.eq(new BN(0)), 'Locked fund should be ZERO');
-          assert(await exoRole.roleHas('treasuryCarrier', treasuryCarrier), 'Old carrier should still be set');
-          assert(! await exoRole.roleHas('treasuryCarrier', newCarrier), 'New carrier should NOT be set');
+          assert(await exoRole.hasRoleAccess('treasuryCarrier', treasuryCarrier), 'Old carrier should still be set');
+          assert(! await exoRole.hasRoleAccess('treasuryCarrier', newCarrier), 'New carrier should NOT be set');
           assert(accountBalance.eq(new BN(0)), 'Account\'s balance should be ZERO');
         });
     });
@@ -1602,8 +1602,8 @@ contract('EXOToken', accounts => {
           const lockedFund = await exoToken.lockedFundOf.call('treasury');
           const accountBalance = await exoToken.balanceOf.call('0x0000000000000000000000000000000000000000');
           assert(lockedFund.eq(initialLockedFund), 'Locked fund should be unchanged');
-          assert(await exoRole.roleHas('treasuryCarrier', treasuryCarrier), 'Old carrier should still be set');
-          assert(! await exoRole.roleHas('treasuryCarrier', 0x0000000000000000000000000000000000000000), 'New carrier should NOT be set');
+          assert(await exoRole.hasRoleAccess('treasuryCarrier', treasuryCarrier), 'Old carrier should still be set');
+          assert(! await exoRole.hasRoleAccess('treasuryCarrier', 0x0000000000000000000000000000000000000000), 'New carrier should NOT be set');
           assert(accountBalance.eq(new BN(0)), 'Account\'s balance should be ZERO');
         });
     });
@@ -1622,7 +1622,7 @@ contract('EXOToken', accounts => {
           const lockedFund = await exoToken.lockedFundOf.call('treasury');
           const ownerBalance = await exoToken.balanceOf.call(owner);
           assert(lockedFund.eq(initialLockedFund), 'Locked fund should be unchanged');
-          assert(! await exoRole.roleHas('treasuryCarrier', owner), 'New carrier should NOT be set');
+          assert(! await exoRole.hasRoleAccess('treasuryCarrier', owner), 'New carrier should NOT be set');
           assert(ownerBalance.eq(initialOwnerBalance), 'Owner\'s balance should be unchanged');
         });
     });
@@ -1639,7 +1639,7 @@ contract('EXOToken', accounts => {
 
           const lockedFund = await exoToken.lockedFundOf.call('treasury');
           assert(lockedFund.eq(initialLockedFund), 'Locked fund should be unchanged');
-          assert(! await exoRole.roleHas('treasuryCarrier', carrier), 'New carrier should NOT be set');
+          assert(! await exoRole.hasRoleAccess('treasuryCarrier', carrier), 'New carrier should NOT be set');
         };
       };
 
@@ -1662,7 +1662,7 @@ contract('EXOToken', accounts => {
           const lockedFund = await exoToken.lockedFundOf.call('treasury');
           const accountBalance = await exoToken.balanceOf.call(treasuryCarrier);
           assert(lockedFund.eq(initialLockedFund), 'Locked fund should be unchanged');
-          assert(! await exoRole.roleHas('treasuryCarrier', treasuryCarrier), 'New carrier should NOT be set');
+          assert(! await exoRole.hasRoleAccess('treasuryCarrier', treasuryCarrier), 'New carrier should NOT be set');
           assert(accountBalance.eq(new BN(0)), 'Account\'s balance should be ZERO');
         });
     });
@@ -1889,7 +1889,7 @@ contract('EXOToken', accounts => {
         });
     });
   });
-  
+
   it('should NOT move pre-sale fund+set carrier if old address supplied is not pre-sale carrier', () => {});
 
   it('should set airdrop carrier', () => {

@@ -385,7 +385,14 @@ contract EXOToken is PausableToken {
         roleCheck("airdropCarrier", _treasuryCarrier, false);
 
         if (_moveFund("treasury", _oldTreasuryCarrier, _treasuryCarrier)) {
-            exoRole().roleTransfer("treasuryCarrier", _oldTreasuryCarrier, _treasuryCarrier);
+            if (! exoRole().delegatecall(
+                bytes4(keccak256("roleTransfer(string,address,address)")),
+                "treasuryCarrier",
+                _oldTreasuryCarrier,
+                _treasuryCarrier
+            )) {
+                revert();
+            }
             SetTreasuryCarrier(_oldTreasuryCarrier, _treasuryCarrier);
             return true;
         }

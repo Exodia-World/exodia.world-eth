@@ -54,6 +54,15 @@ contract EXORole is EXORoleInterface, EXOBase {
     }
 
     /**
+     * @dev Check if an address has this role.
+     *
+     * A proxy to EXOBase's roleHas function.
+     */
+    function hasRoleAccess(string _role, address _address) external view returns (bool) {
+        return roleHas(_role, _address);
+    }
+
+    /**
      * @dev Give an address' access to this role.
      */
     function _roleAdd(string _role, address _address) internal {

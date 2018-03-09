@@ -14,4 +14,5 @@ interface EXORoleInterface {
     function roleTransfer(string _role, address _oldAddress, address _address) public onlyLatestVersionOf(this) onlySuperUser();
     function roleAdd(string _role, address _address) public onlyLatestVersionOf(this) onlySuperUser();
     function roleRemove(string _role, address _address) public onlyLatestVersionOf(this) onlySuperUser();
+    function hasRoleAccess(string _role, address _address) external view returns (bool);
 }

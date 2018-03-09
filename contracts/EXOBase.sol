@@ -43,7 +43,7 @@ contract EXOBase {
     /**
      * @dev Check if an address has this role.
      */
-    function roleHas(string _role, address _address) public view returns (bool) {
+    function roleHas(string _role, address _address) internal view returns (bool) {
         return exoStorage.getBool(keccak256("access.role", _role, _address));
     }
 
