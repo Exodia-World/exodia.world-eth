@@ -6,7 +6,7 @@ A decentralized digital gaming marketplace and platform that enables game studio
 
 # Ethereum Contracts
 
-This repository hosts Ethereum contracts for Exodia.World. Contract development, testing, and deployment are performed here.
+This project hosts Ethereum contracts for Exodia.World. Contract development, testing, and deployment are performed here.
 
 ## Overview
 
@@ -33,6 +33,7 @@ For development, we use an Ethereum local test network and [ganache-cli](https:/
     ./truffle compile
 
 Run the above command to build our contracts and store their ABIs into the `build/contracts` directory.
+
 **Note**: This process is optional as it's always run automatically before migration or testing.
 
 ## Migration
@@ -40,6 +41,7 @@ Run the above command to build our contracts and store their ABIs into the `buil
     ./truffle migrate
 
 Run the above command to migrate our contracts to the Ethereum local test network provided by ganache-cli.
+
 **Note**: This process is optional as it's always run automatically before testing.
 
 If you want to add or modify the migration scripts, they are all in the `migrations` directory.
