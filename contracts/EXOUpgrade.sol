@@ -9,7 +9,7 @@ import "./EXOStorage.sol";
  * @dev Allow upgrades on EXO contracts.
  */
 contract EXOUpgrade is EXOBase {
-    event ContractUpgraded(address indexed _oldContractAddress, address indexed _newContractAddress, uint256 createdAt);
+    event ContractUpgraded(address indexed oldContractAddress, address indexed newContractAddress, uint256 createdAt);
 
     /**
      * @dev Initialize EXOUpgrade.
@@ -35,7 +35,7 @@ contract EXOUpgrade is EXOBase {
     {
         // Get the current contract's address and check if it exists.
         address oldContractAddress = exoStorage.getAddress(keccak256("contract.name", _name));
-        require(oldContractAddress != 0x0);
+        require(oldContractAddress != address(0));
         if (oldContractAddress.balance > 0) {
             require(_forceEther == true);
         }
