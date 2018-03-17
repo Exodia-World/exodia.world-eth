@@ -1,7 +1,6 @@
 const Web3Utils = require('web3-utils');
 const BN = require('bn.js');
 const helpers = require('./helpers');
-const toBN = helpers.toBN;
 const EXOStorage = artifacts.require('EXOStorage');
 const EXORole = artifacts.require('EXORole');
 const EXOToken = artifacts.require('EXOToken');

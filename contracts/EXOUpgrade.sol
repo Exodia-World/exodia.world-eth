@@ -35,7 +35,7 @@ contract EXOUpgrade is EXOBase {
     {
         // Get the current contract's address and check if it exists.
         address oldContractAddress = exoStorage.getAddress(keccak256("contract.name", _name));
-        require(oldContractAddress != address(0));
+        require(oldContractAddress != address(0) && _upgradedContractAddress != address(0));
         if (oldContractAddress.balance > 0) {
             require(_forceEther == true);
         }

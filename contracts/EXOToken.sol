@@ -61,7 +61,7 @@ contract EXOToken is PausableToken {
         uint256 _minICOTokensBoughtEveryPurchase,
         uint256 _maxICOTokensBought,
         uint256 _airdropAmount
-    ) EXOBase("EXOToken", _exoStorageAddress) public
+    ) EXOBase("EXOToken", _exoStorageAddress) public payable
     {
         roleCheck("owner", msg.sender, true);
 
