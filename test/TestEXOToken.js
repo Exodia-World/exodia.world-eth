@@ -2,6 +2,7 @@ const Web3Utils = require('web3-utils');
 const BN = require('bn.js');
 const helpers = require('./helpers');
 const EXOStorage = artifacts.require('EXOStorage');
+const EXOUpgrade = artifacts.require('EXOUpgrade');
 const EXORole = artifacts.require('EXORole');
 const EXOToken = artifacts.require('EXOToken');
 var exoStorage, exoRole;
@@ -141,6 +142,50 @@ contract('EXOToken', accounts => {
       assert(ICOEthToExo.eq(ICO_ETH_TO_EXO), 'The exchange rate from ETH to EXO at ICO should be set');
       assert(ICODuration.eq(ICO_DURATION), 'The ICO duration should be set');
       assert(airdropAmount.eq(AIRDROP_AMOUNT), 'The airdrop amount of EXO per account should be set');
+    });
+  });
+
+  it('should only set constructor arguments to eternal storage on initial deployment', () => {
+    return EXOToken.deployed().then(async exoToken => {
+      await fastForwardToAfterPreSale(exoToken);
+      await exoToken.startICO();
+
+      const buyer = accounts[6];
+      const amount = new BN(web3.toWei(MIN_ICO_TOKENS_BOUGHT_EVERY_PURCHASE.div(ICO_ETH_TO_EXO).add(new BN(1)).div(exp), "ether"));
+      const expectedExoBought = amount.mul(ICO_ETH_TO_EXO);
+      const expectedBuyerBalance = (await exoToken.balanceOf(buyer)).add(expectedExoBought);
+      const expectedICOFund = (await exoToken.availableICOFund.call()).sub(expectedExoBought);
+      const expectedICOTokensBought = (await exoToken.ICOTokensBoughtBy.call(buyer)).add(expectedExoBought);
+      const expectedTotalICOTokensBought = (await exoToken.totalICOTokensBought.call()).add(expectedExoBought);
+
+      await exoToken.buyICOTokens({from: buyer, value: amount});
+
+      return EXOToken.new(
+        EXOStorage.address,
+        100000000, // total supply
+        50000000, // minimum balance for stake reward
+        10000000, // locked treasury fund
+        5000000, // locked pre-sale fund
+        1209600, // pre-sale duration
+        2419200, // ICO duration
+        25000000, // available ICO fund
+        3650, // minimum ICO tokens bought every purchase (1 ETH)
+        18250, // maximum ICO tokens bought for all purchases (5 ETH)
+        10, // airdrop amount
+        {gas: 8000000}
+      ).then(async _exoToken => {
+        const exoUpgrade = await EXOUpgrade.deployed();
+        await exoUpgrade.upgradeContract('EXOToken', _exoToken.address, true);
+
+        const buyerBalance = await _exoToken.balanceOf(buyer);
+        const remainingICOFund = await _exoToken.availableICOFund.call();
+        const ICOTokensBought = await _exoToken.ICOTokensBoughtBy.call(buyer);
+        const totalICOTokensBought = await _exoToken.totalICOTokensBought.call();
+        assert(buyerBalance.eq(expectedBuyerBalance), 'Buyer\'s balance should be correct');
+        assert(remainingICOFund.eq(expectedICOFund), 'Remaining ICO fund should be correct');
+        assert(ICOTokensBought.eq(expectedICOTokensBought), 'Total ICO tokens bought by buyer should be correct');
+        assert(totalICOTokensBought.eq(expectedTotalICOTokensBought), 'The total ICO tokens bought should be correct');
+      });
     });
   });
 
@@ -2202,6 +2247,7 @@ contract('EXOToken', accounts => {
         });
     })
   });
+
   // TODO
   // it('should selfdestruct if killed by owner', () => {});
   // External functions should be non-reentrant.

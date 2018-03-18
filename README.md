@@ -78,6 +78,7 @@ Much of the configuration can be done in the `truffle.js` or by passing argument
 - Handle known and expected errors
 - Test the corner cases of every function
 - Include fail-safe mode
+- Eliminate any usage of deprecated features and styles
 
 ### Contract
 

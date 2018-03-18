@@ -65,31 +65,29 @@ contract EXOToken is PausableToken {
     {
         roleCheck("owner", msg.sender, true);
 
+        // Set all values not stored in the eternal storage.
+        minBalanceForStakeReward = _minBalanceForStakeReward.mul(uint(10)**DECIMALS);
+        preSaleDuration = _preSaleDuration;
+        ICODuration = _ICODuration;
+        initialICOFund = _availableICOFund.mul(uint(10)**DECIMALS);
+        minICOTokensBoughtEveryPurchase = _minICOTokensBoughtEveryPurchase.mul(uint(10)**DECIMALS);
+        maxICOTokensBought = _maxICOTokensBought.mul(uint(10)**DECIMALS);
+        airdropAmount = _airdropAmount.mul(uint(10)**DECIMALS);
+
         bool _isUpgrade = exoStorage.getBool(keccak256("contract.storage.initialized"));
         if (_isUpgrade == false) {
             // Execute everything below only once on initial deployment.
             primaryHolder(msg.sender); // set the primary holder of EXO tokens
-
             totalSupply(_totalSupply.mul(uint(10)**DECIMALS));
-            minBalanceForStakeReward = _minBalanceForStakeReward.mul(uint(10)**DECIMALS);
-
             lockedFundOf("treasury", _lockedTreasuryFund.mul(uint(10)**DECIMALS));
             lockedFundOf("preSale", _lockedPreSaleFund.mul(uint(10)**DECIMALS));
-            preSaleDuration = _preSaleDuration;
-
-            ICODuration = _ICODuration;
-            availableICOFund(_availableICOFund.mul(uint(10)**DECIMALS));
-            initialICOFund = availableICOFund();
-            minICOTokensBoughtEveryPurchase = _minICOTokensBoughtEveryPurchase.mul(uint(10)**DECIMALS);
-            maxICOTokensBought = _maxICOTokensBought.mul(uint(10)**DECIMALS);
-
-            airdropAmount = _airdropAmount.mul(uint(10)**DECIMALS);
+            availableICOFund(initialICOFund);
 
             // Calculate remaining balance for stake reward.
             balanceOf(msg.sender, totalSupply()
                 .sub(lockedFundOf("treasury"))
                 .sub(lockedFundOf("preSale"))
-                .sub(availableICOFund()));
+                .sub(initialICOFund));
 
             assert(balanceOf(msg.sender) >= minBalanceForStakeReward);
         }
@@ -423,7 +421,7 @@ contract EXOToken is PausableToken {
      * @param _oldCarrier The old carrier of fund
      * @param _newCarrier The new carrier of fund
      */
-    function _moveFund(bytes32 _lockedFundName, address _oldCarrier, address _newCarrier) internal onlySuperUser returns (bool) {
+    function _moveFund(bytes32 _lockedFundName, address _oldCarrier, address _newCarrier) private onlySuperUser returns (bool) {
         // Check for non-sensical address and possibility of abuse.
         require(_oldCarrier != _newCarrier && _newCarrier != address(0) && _newCarrier != primaryHolder());
         require(balanceOf(_newCarrier) == 0); // burn check!
