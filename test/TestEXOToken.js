@@ -2249,6 +2249,12 @@ contract('EXOToken', accounts => {
   });
 
   // TODO
+  // it('should NOT run any state-modifying external functions if paused', () => {});
+  // it('should transfer tokens to another address', () => {});
+  // it('should transfer tokens to another address from another', () => {});
+  // it('should approve allowance for an address', () => {});
+  // it('should increase allowance for an address', () => {});
+  // it('should decrease allowance for an address', () => {});
   // it('should selfdestruct if killed by owner', () => {});
   // External functions should be non-reentrant.
   // Token should be upgradeable.
