@@ -48,17 +48,6 @@ contract StandardToken is ERC20, BasicToken {
   }
 
   /**
-   * @dev Function to check the amount of tokens that an owner allowed to a spender.
-   *
-   * @param _owner address The address which owns the funds.
-   * @param _spender address The address which will spend the funds.
-   * @return A uint256 specifying the amount of tokens still available for the spender.
-   */
-  function allowance(address _owner, address _spender) public view returns (uint256) {
-      return exoStorage.getUint(keccak256("token.allowed", _owner, _spender));
-  }
-
-  /**
    * @dev Increase the amount of tokens that an owner allowed to a spender.
    *
    * approve should be called when allowed[_spender] == 0. To increment
@@ -95,7 +84,25 @@ contract StandardToken is ERC20, BasicToken {
     return true;
   }
 
-  function allowance(address _owner, address _spender, uint256 _value) internal onlyLatestVersionOf(this) {
+  /**
+   * @dev Function to check the amount of tokens that an owner allowed to a spender.
+   *
+   * @param _owner address The address which owns the funds.
+   * @param _spender address The address which will spend the funds.
+   * @return A uint256 specifying the amount of tokens still available for the spender.
+   */
+  function allowance(address _owner, address _spender) public view returns (uint256) {
+      return exoStorage.getUint(keccak256("token.allowed", _owner, _spender));
+  }
+
+  /**
+   * @dev Function to set the amount of tokens that an owner allowed to a spender.
+   *
+   * @param _owner address The address which owns the funds.
+   * @param _spender address The address which will spend the funds.
+   * @param _value uint256 The amount of tokens allowed for the spender.
+   */
+  function allowance(address _owner, address _spender, uint256 _value) internal {
       exoStorage.setUint(keccak256("token.allowed", _owner, _spender), _value);
   }
 }
