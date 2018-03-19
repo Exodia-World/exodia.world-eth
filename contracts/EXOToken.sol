@@ -156,6 +156,7 @@ contract EXOToken is PausableToken {
      */
     function transferFrom(address _from, address _to, uint256 _value) public whenNotPaused exceptRole("frozen") returns (bool) {
         roleCheck("frozen", _from, false);
+        roleCheck("owner", _to, false);
         roleCheck("frozen", _to, false);
         return super.transferFrom(_from, _to, _value);
     }

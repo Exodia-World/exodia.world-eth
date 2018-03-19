@@ -114,7 +114,7 @@ contract('EXOToken', accounts => {
     await exoToken.startICO();
     await helpers.increaseTime(ICO_DURATION.toNumber() + 1);
   };
-
+/*
   it('should have the correct parameters as deployed', () => {
     return EXOToken.deployed().then(async exoToken => {
       const totalSupply = await exoToken.totalSupply.call();
@@ -2248,14 +2248,195 @@ contract('EXOToken', accounts => {
     })
   });
 
-  // TODO
-  // it('should NOT run any state-modifying external functions if paused', () => {});
-  // it('should transfer tokens to another address', () => {});
-  // it('should transfer tokens to another address from another', () => {});
+
+  it('should NOT run any state-modifying external functions if paused', () => {
+    return newEXOToken().then(async exoToken => {
+      const recipient = accounts[5];
+      await exoToken.transfer(recipient, 1000);
+      const recipientBalance = await exoToken.balanceOf.call(recipient);
+      assert(recipientBalance.eq(new BN(1000)), 'The recipient\'s balance should be correct');
+
+      exoToken.pause().then(async result => {
+        assert.equal(parseInt(result.receipt.status, 16), 1, 'The pause should complete');
+
+        const events = {};
+        for (let i = 0; i < result.logs.length; i++) {
+          const log = result.logs[i];
+          if (log.event === 'Pause') {
+            events['Pause'] = true;
+          }
+        }
+        assert(events['Pause'], 'Pause event should be published');
+
+        return exoToken.transfer(recipient, 1000).then(transferResult => {
+          assert.equal(parseInt(transferResult.receipt.status, 16), 0, 'The transfer should fail');
+        });
+      });
+    });
+  });
+
+  it('should transfer tokens', () => {
+    return newEXOToken().then(async exoToken => {
+      const recipient = accounts[5];
+      const expectedOwnerBalance = (await exoToken.balanceOf.call(owner)).sub(new BN(1000));
+      const expectedRecipientBalance = (await exoToken.balanceOf.call(recipient)).add(new BN(1000));
+
+      exoToken.transfer(recipient, 1000).then(async result => {
+        assert.equal(parseInt(result.receipt.status, 16), 1, 'The transfer should complete');
+
+        const events = {};
+        for (let i = 0; i < result.logs.length; i++) {
+          const log = result.logs[i];
+          if (log.event === 'Transfer') {
+            assert.equal(log.args.from, owner, 'The published sender should be correct');
+            assert.equal(log.args.to, recipient, 'The published recipient should be correct');
+            assert(log.args.value.eq(new BN(1000)), 'The published value should be correct');
+            events['Transfer'] = true;
+          }
+        }
+        assert(events['Transfer'], 'Transfer event should be published');
+
+        const ownerBalance = await exoToken.balanceOf.call(owner);
+        const recipientBalance = await exoToken.balanceOf.call(recipient);
+        assert(ownerBalance.eq(expectedOwnerBalance), 'The owner\'s balance should be correct');
+        assert(recipientBalance.eq(expectedRecipientBalance), 'The recipient\'s balance should be correct');
+      });
+    });
+  });
+
+  it('should NOT transfer tokens if recipient has 0x0 address', () => {
+    return newEXOToken().then(async exoToken => {
+      const recipient = addressZero;
+      const expectedOwnerBalance = await exoToken.balanceOf.call(owner);
+
+      exoToken.transfer(recipient, 1000).then(async result => {
+        assert.equal(parseInt(result.receipt.status, 16), 0, 'The transfer should fail');
+
+        const ownerBalance = await exoToken.balanceOf.call(owner);
+        const recipientBalance = await exoToken.balanceOf.call(recipient);
+        assert(ownerBalance.eq(expectedOwnerBalance), 'The owner\'s balance should be unchanged');
+        assert(recipientBalance.eq(new BN(0)), 'The recipient\'s balance should be zero');
+      });
+    });
+  });
+
+  it('should NOT transfer tokens if balance is insufficient', () => {
+    return newEXOToken().then(async exoToken => {
+      const recipient = accounts[5];
+      const sender = accounts[4];
+
+      await exoToken.transfer(sender, 1000);
+      const expectedSenderBalance = await exoToken.balanceOf.call(sender);
+
+      exoToken.transfer(recipient, 2000, {from: sender}).then(async result => {
+        assert.equal(parseInt(result.receipt.status, 16), 0, 'The transfer should fail');
+
+        const senderBalance = await exoToken.balanceOf.call(sender);
+        const recipientBalance = await exoToken.balanceOf.call(recipient);
+        assert(senderBalance.eq(expectedSenderBalance), 'The sender\'s balance should be unchanged');
+        assert(recipientBalance.eq(new BN(0)), 'The recipient\'s balance should be zero');
+      });
+    });
+  });
+
+  it('should transfer allowance tokens', () => {
+    return newEXOToken().then(async exoToken => {
+      const spender = accounts[4];
+      const recipient = accounts[5];
+      const expectedOwnerBalance = (await exoToken.balanceOf.call(owner)).sub(new BN(1000));
+      const expectedRecipientBalance = (await exoToken.balanceOf.call(recipient)).add(new BN(1000));
+
+      await exoToken.approve(spender, 1000);
+
+      exoToken.transferFrom(owner, recipient, 1000, {from: spender}).then(async result => {
+        assert.equal(parseInt(result.receipt.status, 16), 1, 'The transfer should complete');
+
+        const events = {};
+        for (let i = 0; i < result.logs.length; i++) {
+          const log = result.logs[i];
+          if (log.event === 'Transfer') {
+            assert.equal(log.args.from, owner, 'The published sender should be correct');
+            assert.equal(log.args.to, recipient, 'The published recipient should be correct');
+            assert(log.args.value.eq(new BN(1000)), 'The published value should be correct');
+            events['Transfer'] = true;
+          }
+        }
+        assert(events['Transfer'], 'Transfer event should be published');
+
+        const ownerBalance = await exoToken.balanceOf.call(owner);
+        const recipientBalance = await exoToken.balanceOf.call(recipient);
+        assert(ownerBalance.eq(expectedOwnerBalance), 'The owner\'s balance should be correct');
+        assert(recipientBalance.eq(expectedRecipientBalance), 'The recipient\'s balance should be correct');
+      });
+    });
+  });
+
+  it('should NOT transfer allowance tokens if recipient has 0x0 address', () => {
+    return newEXOToken().then(async exoToken => {
+      const spender = accounts[4];
+      const recipient = addressZero;
+      const expectedOwnerBalance = await exoToken.balanceOf.call(owner);
+
+      await exoToken.approve(spender, 1000);
+
+      exoToken.transferFrom(owner, recipient, 1000, {from: spender}).then(async result => {
+        assert.equal(parseInt(result.receipt.status, 16), 0, 'The transfer should fail');
+
+        const ownerBalance = await exoToken.balanceOf.call(owner);
+        const recipientBalance = await exoToken.balanceOf.call(recipient);
+        assert(ownerBalance.eq(expectedOwnerBalance), 'The owner\'s balance should be unchanged');
+        assert(recipientBalance.eq(new BN(0)), 'The recipient\'s balance should be zero');
+      });
+    });
+  });
+
+  it('should NOT transfer allowance tokens if lender\'s balance is insufficient', () => {
+    return newEXOToken().then(async exoToken => {
+      const lender = accounts[4];
+      const recipient = accounts[5];
+      const spender = accounts[6];
+
+      await exoToken.transfer(lender, 1000);
+      const expectedLenderBalance = await exoToken.balanceOf.call(lender);
+
+      await exoToken.approve(spender, 1000, {from: lender});
+
+      exoToken.transferFrom(lender, recipient, 2000, {from: spender}).then(async result => {
+        assert.equal(parseInt(result.receipt.status, 16), 0, 'The transfer should fail');
+
+        const lenderBalance = await exoToken.balanceOf.call(lender);
+        const recipientBalance = await exoToken.balanceOf.call(recipient);
+        assert(lenderBalance.eq(expectedLenderBalance), 'The lender\'s balance should be unchanged');
+        assert(recipientBalance.eq(new BN(0)), 'The recipient\'s balance should be zero');
+      });
+    });
+  });
+
+  it('should NOT transfer allowance tokens if allowed balance is insufficient', () => {
+    return newEXOToken().then(async exoToken => {
+      const lender = accounts[4];
+      const recipient = accounts[5];
+      const spender = accounts[6];
+
+      await exoToken.transfer(lender, 1000);
+      const expectedLenderBalance = await exoToken.balanceOf.call(lender);
+
+      await exoToken.approve(spender, 500, {from: lender});
+
+      exoToken.transferFrom(lender, recipient, 600, {from: spender}).then(async result => {
+        assert.equal(parseInt(result.receipt.status, 16), 0, 'The transfer should fail');
+
+        const lenderBalance = await exoToken.balanceOf.call(lender);
+        const recipientBalance = await exoToken.balanceOf.call(recipient);
+        assert(lenderBalance.eq(expectedLenderBalance), 'The lender\'s balance should be unchanged');
+        assert(recipientBalance.eq(new BN(0)), 'The recipient\'s balance should be zero');
+      });
+    });
+  });
+*/
   // it('should approve allowance for an address', () => {});
   // it('should increase allowance for an address', () => {});
   // it('should decrease allowance for an address', () => {});
   // it('should selfdestruct if killed by owner', () => {});
   // External functions should be non-reentrant.
-  // Token should be upgradeable.
 });

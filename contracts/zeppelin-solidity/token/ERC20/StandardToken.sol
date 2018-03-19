@@ -11,7 +11,6 @@ import "./ERC20.sol";
  * @dev Based on code by FirstBlood: https://github.com/Firstbloodio/token/blob/master/smart_contract/FirstBloodToken.sol
  */
 contract StandardToken is ERC20, BasicToken {
-
   /**
    * @dev Transfer tokens from one address to another.
    *
