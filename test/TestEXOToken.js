@@ -21,7 +21,7 @@ const MAX_ICO_TOKENS_BOUGHT = (new BN(18250)).mul(exp);
 const ICO_ETH_TO_EXO = new BN(3650);
 const AIRDROP_AMOUNT = (new BN(10)).mul(exp);
 
-const newEXOToken = (changes = {}) => {
+const newEXOToken = (changes = {}, value = 0) => {
   return EXOStorage.new().then(_exoStorage => {
     exoStorage = _exoStorage;
     return EXORole.new(exoStorage.address).then(_exoRole => {
@@ -40,7 +40,7 @@ const newEXOToken = (changes = {}) => {
       };
       Object.assign(argsObj, changes);
       const args = Object.values(argsObj);
-      return EXOToken.new(exoStorage.address, ...args, {gas: 8000000}).then(async exoToken => {
+      return EXOToken.new(exoStorage.address, ...args, {gas: 8000000, value}).then(async exoToken => {
         // Register EXORole contract.
         await exoStorage.setAddress(
           Web3Utils.soliditySha3('contract.address', exoRole.address),
@@ -2433,10 +2433,172 @@ contract('EXOToken', accounts => {
       });
     });
   });
+
+  it('should approve allowance for an address', () => {
+    return newEXOToken().then(exoToken => {
+      const spender = accounts[6];
+
+      exoToken.approve(spender, 500).then(async result => {
+        assert.equal(parseInt(result.receipt.status, 16), 1, 'The approval should complete');
+
+        const events = {};
+        for (let i = 0; i < result.logs.length; i++) {
+          const log = result.logs[i];
+          if (log.event === 'Approval') {
+            assert.equal(log.args.owner, owner, 'The published owner should be correct');
+            assert.equal(log.args.spender, spender, 'The published spender should be correct');
+            assert(log.args.value.eq(new BN(500)), 'The published value should be correct');
+            events['Approval'] = true;
+          }
+        }
+        assert(events['Approval'], 'Approval event should be published');
+
+        const allowance = await exoToken.allowance.call(owner, spender);
+        assert(allowance.eq(new BN(500)), 'The allowance for spender should be correct');
+      });
+    });
+  });
+
+  it('should increase allowance for an address', () => {
+    return newEXOToken().then(async exoToken => {
+      const spender = accounts[6];
+      await exoToken.approve(spender, 1000);
+      const initialAllowance = await exoToken.allowance.call(owner, spender);
+      assert(initialAllowance.eq(new BN(1000)), 'The initial allowance should be correct');
+
+      const expectedAllowance = initialAllowance.add(new BN(500));
+
+      exoToken.increaseApproval(spender, 500).then(async result => {
+        assert.equal(parseInt(result.receipt.status, 16), 1, 'The allowance increase should complete');
+
+        const events = {};
+        for (let i = 0; i < result.logs.length; i++) {
+          const log = result.logs[i];
+          if (log.event === 'Approval') {
+            assert.equal(log.args.owner, owner, 'The published owner should be correct');
+            assert.equal(log.args.spender, spender, 'The published spender should be correct');
+            assert(log.args.value.eq(expectedAllowance), 'The published value should be correct');
+            events['Approval'] = true;
+          }
+        }
+        assert(events['Approval'], 'Approval event should be published');
+
+        const allowance = await exoToken.allowance.call(owner, spender);
+        assert(allowance.eq(expectedAllowance), 'The allowance for spender should be correct');
+      });
+    });
+  });
+
+  it('should decrease allowance for an address', () => {
+    return newEXOToken().then(async exoToken => {
+      const spender = accounts[6];
+      await exoToken.approve(spender, 1000);
+      const initialAllowance = await exoToken.allowance.call(owner, spender);
+      assert(initialAllowance.eq(new BN(1000)), 'The initial allowance should be correct');
+
+      const expectedAllowance = initialAllowance.sub(new BN(500));
+
+      exoToken.decreaseApproval(spender, 500).then(async result => {
+        assert.equal(parseInt(result.receipt.status, 16), 1, 'The allowance decrease should complete');
+
+        const events = {};
+        for (let i = 0; i < result.logs.length; i++) {
+          const log = result.logs[i];
+          if (log.event === 'Approval') {
+            assert.equal(log.args.owner, owner, 'The published owner should be correct');
+            assert.equal(log.args.spender, spender, 'The published spender should be correct');
+            assert(log.args.value.eq(expectedAllowance), 'The published value should be correct');
+            events['Approval'] = true;
+          }
+        }
+        assert(events['Approval'], 'Approval event should be published');
+
+        const allowance = await exoToken.allowance.call(owner, spender);
+        assert(allowance.eq(expectedAllowance), 'The allowance for spender should be correct');
+      });
+    });
+  });
+
+  it('should decrease allowance for an address to ZERO if the decrease is greater than old value', () => {
+    return newEXOToken().then(async exoToken => {
+      const spender = accounts[6];
+      await exoToken.approve(spender, 1000);
+      const initialAllowance = await exoToken.allowance.call(owner, spender);
+      assert(initialAllowance.eq(new BN(1000)), 'The initial allowance should be correct');
+
+      const expectedAllowance = 0;
+
+      exoToken.decreaseApproval(spender, 2000).then(async result => {
+        assert.equal(parseInt(result.receipt.status, 16), 1, 'The allowance decrease should complete');
+
+        const events = {};
+        for (let i = 0; i < result.logs.length; i++) {
+          const log = result.logs[i];
+          if (log.event === 'Approval') {
+            assert.equal(log.args.owner, owner, 'The published owner should be correct');
+            assert.equal(log.args.spender, spender, 'The published spender should be correct');
+            assert(log.args.value.eq(expectedAllowance), 'The published value should be correct');
+            events['Approval'] = true;
+          }
+        }
+        assert(events['Approval'], 'Approval event should be published');
+
+        const allowance = await exoToken.allowance.call(owner, spender);
+        assert(allowance.eq(expectedAllowance), 'The allowance for spender should be correct');
+      });
+    });
+  });
 */
-  // it('should approve allowance for an address', () => {});
-  // it('should increase allowance for an address', () => {});
-  // it('should decrease allowance for an address', () => {});
-  // it('should selfdestruct if killed by owner', () => {});
+  it('should selfdestruct if killed by owner', () => {
+    return EXOToken.deployed().then(async exoToken => {
+      await fastForwardToAfterPreSale(exoToken);
+      await exoToken.startICO();
+      const amount = new BN(web3.toWei(MIN_ICO_TOKENS_BOUGHT_EVERY_PURCHASE.div(ICO_ETH_TO_EXO).add(new BN(1)).div(exp), "ether"));
+      await exoToken.buyICOTokens({value: amount});
+
+      return EXOToken.new(
+        EXOStorage.address,
+        100000000, // total supply
+        50000000, // minimum balance for stake reward
+        10000000, // locked treasury fund
+        5000000, // locked pre-sale fund
+        1209600, // pre-sale duration
+        2419200, // ICO duration
+        25000000, // available ICO fund
+        3650, // minimum ICO tokens bought every purchase (1 ETH)
+        18250, // maximum ICO tokens bought for all purchases (5 ETH)
+        10, // airdrop amount
+        {gas: 8000000}
+      ).then(async _exoToken => {
+        const exoUpgrade = await EXOUpgrade.deployed();
+        await exoUpgrade.upgradeContract('EXOToken', _exoToken.address, true);
+
+        const initialContractBalance = web3.eth.getBalance(exoToken.address);
+        assert(initialContractBalance.eq(amount), 'The initial contract balance should be correct');
+        const expectedOwnerBalance = web3.eth.getBalance(owner).add(initialContractBalance);
+
+        exoToken.kill().then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 1, 'The selfdestruct should complete');
+
+          const events = {};
+          for (let i = 0; i < result.logs.length; i++) {
+            const log = result.logs[i];
+            if (log.event === 'SelfDestruct') {
+              assert.equal(log.args.contractName, 'EXOToken', 'The published contract name should be correct');
+              assert.equal(log.args.contractAddress, exoToken.address, 'The published contract address should be correct');
+              events['SelfDestruct'] = true;
+            }
+          }
+          assert(events['SelfDestruct'], 'SelfDestruct event should be published');
+
+          const contractBalance = web3.eth.getBalance(exoToken.address);
+          const ownerBalance = web3.eth.getBalance(owner);
+          assert(ownerBalance.eq(expectedOwnerBalance), 'The owner balance should be correct');
+          assert(contractBalance.eq(new BN(0)), 'The contract balance should be correct');
+        });
+      });
+    });
+  });
+
   // External functions should be non-reentrant.
 });
