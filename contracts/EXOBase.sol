@@ -12,6 +12,14 @@ contract EXOBase {
     string public contractName;
     EXOStorageInterface exoStorage = EXOStorageInterface(0);
 
+    event SelfDestruct(string indexed contractName, address indexed contractAddress);
+
+    /**
+     * @dev Initialize contract's name and eternal storage's address.
+     *
+     * @param _contractName //
+     * @param _exoStorageAddress //
+     */
     function EXOBase(string _contractName, address _exoStorageAddress) public {
         contractName = _contractName;
         exoStorage = EXOStorageInterface(_exoStorageAddress);
@@ -42,6 +50,9 @@ contract EXOBase {
 
     /**
      * @dev Check if an address has this role.
+     *
+     * @param _role //
+     * @param _address //
      */
     function roleHas(string _role, address _address) internal view returns (bool) {
         return exoStorage.getBool(keccak256("access.role", _role, _address));
@@ -56,5 +67,18 @@ contract EXOBase {
      */
     function roleCheck(string _role, address _address, bool _hasRole) internal view {
         require(roleHas(_role, _address) == _hasRole);
+    }
+
+    /**
+     * @dev Kill this contract and refund its balance to owner.
+     */
+    function kill() onlyRole("owner") external {
+        // An active contract cannot be killed.
+        address contractAddress = exoStorage.getAddress(keccak256("contract.name", contractName));
+        address accessAddress = exoStorage.getAddress(keccak256("contract.address", address(this)));
+        require(contractAddress != address(this) && accessAddress != address(this));
+
+        SelfDestruct(contractName, address(this));
+        selfdestruct(msg.sender);
     }
 }
