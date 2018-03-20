@@ -24,12 +24,12 @@ contract EXOToken is PausableToken {
     uint256 public maxICOTokensBought; // by one account for all purchases
     uint256 public airdropAmount;
 
-    event StartPreSale(uint256 indexed startTime, uint256 indexed deadline);
-    event StartICO(uint256 indexed startTime, uint256 indexed deadline);
+    event StartPreSale(uint256 startTime, uint256 deadline);
+    event StartICO(uint256 startTime, uint256 deadline);
     event TransferETH(address indexed from, address indexed to, uint256 value);
-    event DepositStake(address indexed staker, uint256 indexed value);
-    event WithdrawStake(address indexed staker, uint256 indexed value);
-    event UpdateStakeBalance(address indexed staker, uint256 indexed balance);
+    event DepositStake(address indexed staker, uint256 value);
+    event WithdrawStake(address indexed staker, uint256 value);
+    event UpdateStakeBalance(address indexed staker, uint256 balance);
     event SetTreasuryCarrier(address indexed oldCarrier, address indexed newCarrier);
     event SetPreSaleCarrier(address indexed oldCarrier, address indexed newCarrier);
     event SetAirdropCarrier(address indexed oldCarrier, address indexed newCarrier);
@@ -66,21 +66,21 @@ contract EXOToken is PausableToken {
         roleCheck("owner", msg.sender, true);
 
         // Set all values not stored in the eternal storage.
-        minBalanceForStakeReward = _minBalanceForStakeReward.mul(uint(10)**DECIMALS);
+        minBalanceForStakeReward = _minBalanceForStakeReward.mul(uint(10)**decimals);
         preSaleDuration = _preSaleDuration;
         ICODuration = _ICODuration;
-        initialICOFund = _availableICOFund.mul(uint(10)**DECIMALS);
-        minICOTokensBoughtEveryPurchase = _minICOTokensBoughtEveryPurchase.mul(uint(10)**DECIMALS);
-        maxICOTokensBought = _maxICOTokensBought.mul(uint(10)**DECIMALS);
-        airdropAmount = _airdropAmount.mul(uint(10)**DECIMALS);
+        initialICOFund = _availableICOFund.mul(uint(10)**decimals);
+        minICOTokensBoughtEveryPurchase = _minICOTokensBoughtEveryPurchase.mul(uint(10)**decimals);
+        maxICOTokensBought = _maxICOTokensBought.mul(uint(10)**decimals);
+        airdropAmount = _airdropAmount.mul(uint(10)**decimals);
 
         bool _isUpgrade = exoStorage.getBool(keccak256("contract.storage.initialized"));
         if (_isUpgrade == false) {
             // Execute everything below only once on initial deployment.
             primaryHolder(msg.sender); // set the primary holder of EXO tokens
-            totalSupply(_totalSupply.mul(uint(10)**DECIMALS));
-            lockedFundOf("treasury", _lockedTreasuryFund.mul(uint(10)**DECIMALS));
-            lockedFundOf("preSale", _lockedPreSaleFund.mul(uint(10)**DECIMALS));
+            totalSupply(_totalSupply.mul(uint(10)**decimals));
+            lockedFundOf("treasury", _lockedTreasuryFund.mul(uint(10)**decimals));
+            lockedFundOf("preSale", _lockedPreSaleFund.mul(uint(10)**decimals));
             availableICOFund(initialICOFund);
 
             // Calculate remaining balance for stake reward.
