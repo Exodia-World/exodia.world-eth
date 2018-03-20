@@ -10,9 +10,9 @@ import "./interfaces/EXORoleInterface.sol";
  * @dev Implementation of the EXO Token by Exodia.World.
  */
 contract EXOToken is PausableToken {
-    string public constant NAME = "EXO";
-    string public constant SYMBOL = "EXO";
-    uint8 public constant DECIMALS = 18;
+    string public constant name = "EXO Token";
+    string public constant symbol = "EXO";
+    uint8 public constant decimals = 18;
     uint256 public constant PRESALE_ETH_TO_EXO = 7300;
     uint256 public constant ICO_ETH_TO_EXO = 3650;
 
