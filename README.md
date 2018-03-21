@@ -42,6 +42,8 @@ Run the above command to build our contracts and store their ABIs into the `buil
 
 Run the above command to lint our contracts with Solhint. Fix all errors reported and avoid warnings whenever practical.
 
+**WARNING**: Do NOT change third-party contracts carelessly.
+
 ## Migration
 
     ./truffle migrate
