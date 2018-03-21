@@ -76,7 +76,8 @@ Much of the configuration can be done in the `truffle.js` or by passing argument
 
 ## Security Checklist
 
-This list is compiled from
+This list is compiled from:
+
 - [ConsenSys' Ethereum Smart Contract Security Best Practices](https://consensys.github.io/smart-contract-best-practices/)
 - [Solidity's Security Considerations](http://solidity.readthedocs.io/en/v0.4.18/security-considerations.html)
 
