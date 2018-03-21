@@ -12,7 +12,7 @@ contract EXOBase {
     string public contractName;
     EXOStorageInterface exoStorage = EXOStorageInterface(0);
 
-    event SelfDestruct(string indexed contractName, address indexed contractAddress);
+    event SelfDestruct(string contractName, address indexed contractAddress);
 
     /**
      * @dev Initialize contract's name and eternal storage's address.
