@@ -40,7 +40,9 @@ Run the above command to build our contracts and store their ABIs into the `buil
 
     ./solhint-x
 
-Run the above command to lint our contracts with Solhint. Fix all errors reported and avoid warnings whenever practical.
+Run the above command to lint our contracts with Solhint. Fix errors reported and avoid warnings whenever practical.
+
+The goal is to review the lint results for security issues. Use common sense at all times.
 
 **WARNING**: Do NOT change third-party contracts carelessly.
 
