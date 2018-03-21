@@ -36,6 +36,12 @@ Run the above command to build our contracts and store their ABIs into the `buil
 
 **Note**: This process is optional as it's always run automatically before migration or testing.
 
+## Linting
+
+    ./solium -d contracts
+
+Run the above command to lint our contracts with Solium. Fix all errors reported and avoid warnings whenever practical.
+
 ## Migration
 
     ./truffle migrate
@@ -65,6 +71,11 @@ Much of the configuration can be done in the `truffle.js` or by passing argument
 [Truffle's Documentation](http://truffleframework.com/docs/)
 
 ## Security Checklist
+
+This list is compiled from
+- [ConsenSys' Ethereum Smart Contract Security Best Practices](https://consensys.github.io/smart-contract-best-practices/)
+- [Solidity's Security Considerations](http://solidity.readthedocs.io/en/v0.4.18/security-considerations.html)
+
 ### Basic
 
 - Explicitly set variable and function modifiers
@@ -91,5 +102,5 @@ Much of the configuration can be done in the `truffle.js` or by passing argument
 - Check for harmful Ether transfers (send/receive)
 - Check for harmful fails caused by OOGs and Max. Callstack Depth
 - Check for insecure authorization (e.g., use of tx.origin)
-- Check for "dirty higher order bits"
+- Check for "dirty higher order bits" - especially if you access msg.data
 - Check for insecure random number generation
