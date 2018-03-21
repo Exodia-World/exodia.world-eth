@@ -10,8 +10,8 @@ import "./interfaces/EXOStorageInterface.sol";
  * @dev Allow role-based access on EXO contracts.
  */
 contract EXORole is EXORoleInterface, EXOBase {
-    event RoleAdded(string roleName, address account);
-    event RoleRemoved(string roleName, address account);
+    event RoleAdded(string roleName, address indexed account);
+    event RoleRemoved(string roleName, address indexed account);
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
     function EXORole(address _exoStorageAddress) EXOBase("EXORole", _exoStorageAddress) public {
