@@ -5,7 +5,7 @@ const EXOStorage = artifacts.require('EXOStorage');
 const EXOUpgrade = artifacts.require('EXOUpgrade');
 const EXORole = artifacts.require('EXORole');
 const EXOToken = artifacts.require('EXOToken');
-var exoStorage, exoRole;
+var exoStorage, exoUpgrade, exoRole;
 
 const exp = (new BN(10)).pow(new BN(18));
 const TOTAL_SUPPLY = (new BN(100000000)).mul(exp);
@@ -24,48 +24,61 @@ const AIRDROP_AMOUNT = (new BN(10)).mul(exp);
 const newEXOToken = (changes = {}, value = 0) => {
   return EXOStorage.new().then(_exoStorage => {
     exoStorage = _exoStorage;
-    return EXORole.new(exoStorage.address).then(_exoRole => {
-      exoRole = _exoRole;
-      const argsObj = {
-        totalSupply: TOTAL_SUPPLY.div(exp).toNumber(),
-        minBalanceForStakeReward: MIN_BALANCE_FOR_STAKE_REWARD.div(exp).toNumber(),
-        lockedTreasuryFund: LOCKED_TREASURY_FUND.div(exp).toNumber(),
-        lockedPreSaleFund: LOCKED_PRESALE_FUND.div(exp).toNumber(),
-        preSaleDuration: PRESALE_DURATION.toNumber(),
-        ICODuration: ICO_DURATION.toNumber(),
-        availableICOFund: AVAILABLE_ICO_FUND.div(exp).toNumber(),
-        minICOTokensBoughtEveryPurchase: MIN_ICO_TOKENS_BOUGHT_EVERY_PURCHASE.div(exp).toNumber(),
-        maxICOTokensBought: MAX_ICO_TOKENS_BOUGHT.div(exp).toNumber(),
-        airdropAmount: AIRDROP_AMOUNT.div(exp).toNumber()
-      };
-      Object.assign(argsObj, changes);
-      const args = Object.values(argsObj);
-      return EXOToken.new(exoStorage.address, ...args, {gas: 8000000, value}).then(async exoToken => {
-        // Register EXORole contract.
-        await exoStorage.setAddress(
-          Web3Utils.soliditySha3('contract.address', exoRole.address),
-          exoRole.address
-        );
-        await exoStorage.setAddress(
-          Web3Utils.soliditySha3('contract.name', 'EXORole'),
-          exoRole.address
-        );
+    return EXOUpgrade.new(exoStorage.address).then(_exoUpgrade => {
+      exoUpgrade = _exoUpgrade;
+      return EXORole.new(exoStorage.address).then(_exoRole => {
+        exoRole = _exoRole;
+        const argsObj = {
+          totalSupply: TOTAL_SUPPLY.div(exp).toNumber(),
+          minBalanceForStakeReward: MIN_BALANCE_FOR_STAKE_REWARD.div(exp).toNumber(),
+          lockedTreasuryFund: LOCKED_TREASURY_FUND.div(exp).toNumber(),
+          lockedPreSaleFund: LOCKED_PRESALE_FUND.div(exp).toNumber(),
+          preSaleDuration: PRESALE_DURATION.toNumber(),
+          ICODuration: ICO_DURATION.toNumber(),
+          availableICOFund: AVAILABLE_ICO_FUND.div(exp).toNumber(),
+          minICOTokensBoughtEveryPurchase: MIN_ICO_TOKENS_BOUGHT_EVERY_PURCHASE.div(exp).toNumber(),
+          maxICOTokensBought: MAX_ICO_TOKENS_BOUGHT.div(exp).toNumber(),
+          airdropAmount: AIRDROP_AMOUNT.div(exp).toNumber()
+        };
+        Object.assign(argsObj, changes);
+        const args = Object.values(argsObj);
+        return EXOToken.new(exoStorage.address, ...args, {gas: 8000000, value}).then(async exoToken => {
+          // Register EXOUpgrade contract.
+          await exoStorage.setAddress(
+            Web3Utils.soliditySha3('contract.address', exoUpgrade.address),
+            exoUpgrade.address
+          );
+          await exoStorage.setAddress(
+            Web3Utils.soliditySha3('contract.name', 'EXOUpgrade'),
+            exoUpgrade.address
+          );
 
-        // Register EXOToken contract.
-        await exoStorage.setAddress(
-          Web3Utils.soliditySha3('contract.address', exoToken.address),
-          exoToken.address
-        );
-        await exoStorage.setAddress(
-          Web3Utils.soliditySha3('contract.name', 'EXOToken'),
-          exoToken.address
-        );
+          // Register EXORole contract.
+          await exoStorage.setAddress(
+            Web3Utils.soliditySha3('contract.address', exoRole.address),
+            exoRole.address
+          );
+          await exoStorage.setAddress(
+            Web3Utils.soliditySha3('contract.name', 'EXORole'),
+            exoRole.address
+          );
 
-        await exoStorage.setBool(
-          Web3Utils.soliditySha3('contract.storage.initialized'),
-          true
-        );
-        return exoToken;
+          // Register EXOToken contract.
+          await exoStorage.setAddress(
+            Web3Utils.soliditySha3('contract.address', exoToken.address),
+            exoToken.address
+          );
+          await exoStorage.setAddress(
+            Web3Utils.soliditySha3('contract.name', 'EXOToken'),
+            exoToken.address
+          );
+
+          await exoStorage.setBool(
+            Web3Utils.soliditySha3('contract.storage.initialized'),
+            true
+          );
+          return exoToken;
+        });
       });
     });
   });
@@ -114,7 +127,7 @@ contract('EXOToken', accounts => {
     await exoToken.startICO();
     await helpers.increaseTime(ICO_DURATION.toNumber() + 1);
   };
-/*
+
   it('should have the correct parameters as deployed', () => {
     return EXOToken.deployed().then(async exoToken => {
       const totalSupply = await exoToken.totalSupply.call();
@@ -146,7 +159,7 @@ contract('EXOToken', accounts => {
   });
 
   it('should only set constructor arguments to eternal storage on initial deployment', () => {
-    return EXOToken.deployed().then(async exoToken => {
+    return newEXOToken().then(async exoToken => {
       await fastForwardToAfterPreSale(exoToken);
       await exoToken.startICO();
 
@@ -161,7 +174,7 @@ contract('EXOToken', accounts => {
       await exoToken.buyICOTokens({from: buyer, value: amount});
 
       return EXOToken.new(
-        EXOStorage.address,
+        exoStorage.address,
         100000000, // total supply
         50000000, // minimum balance for stake reward
         10000000, // locked treasury fund
@@ -174,7 +187,6 @@ contract('EXOToken', accounts => {
         10, // airdrop amount
         {gas: 8000000}
       ).then(async _exoToken => {
-        const exoUpgrade = await EXOUpgrade.deployed();
         await exoUpgrade.upgradeContract('EXOToken', _exoToken.address, true);
 
         const buyerBalance = await _exoToken.balanceOf(buyer);
@@ -2548,9 +2560,51 @@ contract('EXOToken', accounts => {
       });
     });
   });
-*/
+
   it('should selfdestruct if killed by owner', () => {
-    return EXOToken.deployed().then(async exoToken => {
+    return newEXOToken({}, 100000).then(exoToken => {
+      return EXOToken.new(
+        EXOStorage.address,
+        100000000, // total supply
+        50000000, // minimum balance for stake reward
+        10000000, // locked treasury fund
+        5000000, // locked pre-sale fund
+        1209600, // pre-sale duration
+        2419200, // ICO duration
+        25000000, // available ICO fund
+        3650, // minimum ICO tokens bought every purchase (1 ETH)
+        18250, // maximum ICO tokens bought for all purchases (5 ETH)
+        10, // airdrop amount
+        {gas: 8000000}
+      ).then(async _exoToken => {
+        await exoUpgrade.upgradeContract('EXOToken', _exoToken.address, true);
+
+        const initialContractBalance = web3.eth.getBalance(exoToken.address);
+        assert(initialContractBalance.eq(new BN(100000)), 'The initial contract balance should be correct');
+
+        exoToken.kill().then(async result => {
+          assert.equal(parseInt(result.receipt.status, 16), 1, 'The selfdestruct should complete');
+
+          const events = {};
+          for (let i = 0; i < result.logs.length; i++) {
+            const log = result.logs[i];
+            if (log.event === 'SelfDestruct') {
+              assert.equal(log.args.contractName, 'EXOToken', 'The published contract name should be correct');
+              assert.equal(log.args.contractAddress, exoToken.address, 'The published contract address should be correct');
+              events['SelfDestruct'] = true;
+            }
+          }
+          assert(events['SelfDestruct'], 'SelfDestruct event should be published');
+
+          const contractBalance = web3.eth.getBalance(exoToken.address);
+          assert(contractBalance.eq(new BN(0)), 'The contract balance should be correct');
+        });
+      });
+    });
+  });
+
+  it('should NOT selfdestruct if killed by non-owner', () => {
+    return newEXOToken().then(async exoToken => {
       await fastForwardToAfterPreSale(exoToken);
       await exoToken.startICO();
       const amount = new BN(web3.toWei(MIN_ICO_TOKENS_BOUGHT_EVERY_PURCHASE.div(ICO_ETH_TO_EXO).add(new BN(1)).div(exp), "ether"));
@@ -2570,32 +2624,49 @@ contract('EXOToken', accounts => {
         10, // airdrop amount
         {gas: 8000000}
       ).then(async _exoToken => {
-        const exoUpgrade = await EXOUpgrade.deployed();
         await exoUpgrade.upgradeContract('EXOToken', _exoToken.address, true);
 
         const initialContractBalance = web3.eth.getBalance(exoToken.address);
         assert(initialContractBalance.eq(amount), 'The initial contract balance should be correct');
-        const expectedOwnerBalance = web3.eth.getBalance(owner).add(initialContractBalance);
 
-        exoToken.kill().then(async result => {
-          assert.equal(parseInt(result.receipt.status, 16), 1, 'The selfdestruct should complete');
+        exoToken.kill({from: accounts[5]}).then(result => {
+          assert.equal(parseInt(result.receipt.status, 16), 0, 'The selfdestruct should fail');
 
           const events = {};
           for (let i = 0; i < result.logs.length; i++) {
             const log = result.logs[i];
             if (log.event === 'SelfDestruct') {
-              assert.equal(log.args.contractName, 'EXOToken', 'The published contract name should be correct');
-              assert.equal(log.args.contractAddress, exoToken.address, 'The published contract address should be correct');
               events['SelfDestruct'] = true;
             }
           }
-          assert(events['SelfDestruct'], 'SelfDestruct event should be published');
+          assert(! events['SelfDestruct'], 'SelfDestruct event should NOT be published');
 
           const contractBalance = web3.eth.getBalance(exoToken.address);
-          const ownerBalance = web3.eth.getBalance(owner);
-          assert(ownerBalance.eq(expectedOwnerBalance), 'The owner balance should be correct');
-          assert(contractBalance.eq(new BN(0)), 'The contract balance should be correct');
+          assert(contractBalance.eq(initialContractBalance), 'The contract balance should be correct');
         });
+      });
+    });
+  });
+
+  it('should NOT selfdestruct if it is still active', () => {
+    return newEXOToken({}, 100000).then(exoToken => {
+      const initialContractBalance = web3.eth.getBalance(exoToken.address);
+      assert(initialContractBalance.eq(new BN(100000)), 'The initial contract balance should be correct');
+
+      exoToken.kill().then(result => {
+        assert.equal(parseInt(result.receipt.status, 16), 0, 'The selfdestruct should fail');
+
+        const events = {};
+        for (let i = 0; i < result.logs.length; i++) {
+          const log = result.logs[i];
+          if (log.event === 'SelfDestruct') {
+            events['SelfDestruct'] = true;
+          }
+        }
+        assert(! events['SelfDestruct'], 'SelfDestruct event should NOT be published');
+
+        const contractBalance = web3.eth.getBalance(exoToken.address);
+        assert(contractBalance.eq(initialContractBalance), 'The contract balance should be correct');
       });
     });
   });
