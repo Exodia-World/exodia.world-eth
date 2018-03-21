@@ -1600,29 +1600,6 @@ contract('EXOToken', accounts => {
     });
   });
 
-  it('should NOT move treasury fund+publish carrier if old carrier\'s account has ZERO balance', () => {
-    return newEXOToken().then(async exoToken => {
-      await exoRole.roleAdd('treasuryCarrier', treasuryCarrier);
-      await exoToken.setTreasuryCarrier(addressZero, treasuryCarrier);
-
-      const initialOldCarrierBalance = await exoToken.balanceOf.call(treasuryCarrier);
-      assert(initialOldCarrierBalance.eq(LOCKED_TREASURY_FUND), 'The initial old carrier\'s balance should be correct');
-      await exoToken.transfer(accounts[6], initialOldCarrierBalance.div(exp).toNumber() * exp, {from: treasuryCarrier});
-      const newCarrier = accounts[7];
-
-      await exoRole.roleAdd('treasuryCarrier', newCarrier);
-      exoToken.setTreasuryCarrier(treasuryCarrier, newCarrier)
-        .then(async result => {
-          assert.equal(parseInt(result.receipt.status, 16), 0, 'The old carrier\'s fund should NOT be moved');
-
-          const lockedFund = await exoToken.lockedFundOf.call('treasury');
-          const accountBalance = await exoToken.balanceOf.call(newCarrier);
-          assert(lockedFund.eq(new BN(0)), 'Locked fund should be ZERO');
-          assert(accountBalance.eq(new BN(0)), 'Account\'s balance should be ZERO');
-        });
-    });
-  });
-
   it('should NOT move treasury fund+publish carrier if new carrier is the same as old carrier', () => {
     return newEXOToken().then(async exoToken => {
       await exoRole.roleAdd('treasuryCarrier', treasuryCarrier);
@@ -1835,29 +1812,6 @@ contract('EXOToken', accounts => {
           const accountBalance = await exoToken.balanceOf.call(preSaleCarrier);
           assert(lockedFund.eq(initialLockedFund), 'Locked fund should be unchanged');
           assert(accountBalance.eq((new BN(1)).mul(exp)), 'Account\'s balance should be unchanged');
-        });
-    });
-  });
-
-  it('should NOT move pre-sale fund+publish carrier if old carrier\'s account has ZERO balance', () => {
-    return newEXOToken().then(async exoToken => {
-      await exoRole.roleAdd('preSaleCarrier', preSaleCarrier);
-      await exoToken.setPreSaleCarrier(addressZero, preSaleCarrier);
-
-      const initialOldCarrierBalance = await exoToken.balanceOf.call(preSaleCarrier);
-      assert(initialOldCarrierBalance.eq(LOCKED_PRESALE_FUND), 'The initial old carrier\'s balance should be correct');
-      await exoToken.transfer(accounts[6], initialOldCarrierBalance.div(exp).toNumber() * exp, {from: preSaleCarrier});
-      const newCarrier = accounts[7];
-
-      await exoRole.roleAdd('preSaleCarrier', newCarrier);
-      exoToken.setPreSaleCarrier(preSaleCarrier, newCarrier)
-        .then(async result => {
-          assert.equal(parseInt(result.receipt.status, 16), 0, 'The old carrier\'s fund should NOT be moved');
-
-          const lockedFund = await exoToken.lockedFundOf.call('preSale');
-          const accountBalance = await exoToken.balanceOf.call(newCarrier);
-          assert(lockedFund.eq(new BN(0)), 'Locked fund should be ZERO');
-          assert(accountBalance.eq(new BN(0)), 'Account\'s balance should be ZERO');
         });
     });
   });

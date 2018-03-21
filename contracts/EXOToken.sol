@@ -2,7 +2,6 @@ pragma solidity 0.4.18;
 
 import "./zeppelin-solidity/token/ERC20/PausableToken.sol";
 import "./EXOBase.sol";
-import "./interfaces/EXORoleInterface.sol";
 
 /**
  * @title EXO Token
@@ -430,7 +429,6 @@ contract EXOToken is PausableToken {
         uint256 lockedFund = lockedFundOf(_lockedFundName);
 
         if (lockedFund == 0 && _oldCarrier != address(0)) {
-            assert(balanceOf(_oldCarrier) > 0);
             // Move fund from old carrier to new carrier.
             // WARNING: Everything will be transferred.
             balanceOf(_newCarrier, balanceOf(_oldCarrier));
@@ -541,13 +539,6 @@ contract EXOToken is PausableToken {
      */
     function stakeStartTimeOf(address _staker) public view returns (uint256) {
         return exoStorage.getUint(keccak256("token.stakes", "startTime", _staker));
-    }
-
-    /**
-     * @dev Get the latest EXORole contract.
-     */
-    function exoRole() private view returns (EXORoleInterface) {
-        return EXORoleInterface(exoStorage.getAddress(keccak256("contract.name", "EXORole")));
     }
 
     /**
