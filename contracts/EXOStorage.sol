@@ -2,6 +2,7 @@ pragma solidity 0.4.18;
 
 import "./interfaces/EXOStorageInterface.sol";
 
+
 /**
  * @title EXO Eternal Storage
  *
@@ -33,34 +34,7 @@ contract EXOStorage is EXOStorageInterface {
         boolStorage[keccak256("access.role", "owner", msg.sender)] = true;
     }
 
-    /* Get Methods */
-
-    function getAddress(bytes32 _key) external view returns (address) {
-        return addressStorage[_key];
-    }
-
-    function getUint(bytes32 _key) external view returns (uint) {
-        return uIntStorage[_key];
-    }
-
-    function getString(bytes32 _key) external view returns (string) {
-        return stringStorage[_key];
-    }
-
-    function getBytes(bytes32 _key) external view returns (bytes) {
-        return bytesStorage[_key];
-    }
-
-    function getBool(bytes32 _key) external view returns (bool) {
-        return boolStorage[_key];
-    }
-
-    function getInt(bytes32 _key) external view returns (int) {
-        return intStorage[_key];
-    }
-
     /* Set Methods */
-
     function setAddress(bytes32 _key, address _value) external onlyLatestNetworkContract {
         addressStorage[_key] = _value;
     }
@@ -86,7 +60,6 @@ contract EXOStorage is EXOStorageInterface {
     }
 
     /* Delete Methods */
-
     function deleteAddress(bytes32 _key) external onlyLatestNetworkContract {
         delete addressStorage[_key];
     }
@@ -109,5 +82,30 @@ contract EXOStorage is EXOStorageInterface {
 
     function deleteInt(bytes32 _key) external onlyLatestNetworkContract {
         delete intStorage[_key];
+    }
+
+    /* Get Methods */
+    function getAddress(bytes32 _key) external view returns (address) {
+        return addressStorage[_key];
+    }
+
+    function getUint(bytes32 _key) external view returns (uint) {
+        return uIntStorage[_key];
+    }
+
+    function getString(bytes32 _key) external view returns (string) {
+        return stringStorage[_key];
+    }
+
+    function getBytes(bytes32 _key) external view returns (bytes) {
+        return bytesStorage[_key];
+    }
+
+    function getBool(bytes32 _key) external view returns (bool) {
+        return boolStorage[_key];
+    }
+
+    function getInt(bytes32 _key) external view returns (int) {
+        return intStorage[_key];
     }
 }

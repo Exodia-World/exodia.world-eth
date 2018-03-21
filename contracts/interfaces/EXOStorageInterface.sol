@@ -1,5 +1,6 @@
 pragma solidity 0.4.18;
 
+
 /**
  * @title EXO Storage's Interface
  *
@@ -8,13 +9,6 @@ pragma solidity 0.4.18;
 contract EXOStorageInterface {
     // Modifiers
     modifier onlyLatestNetworkContract() {_;}
-    // Getters
-    function getAddress(bytes32 _key) external view returns (address);
-    function getUint(bytes32 _key) external view returns (uint);
-    function getString(bytes32 _key) external view returns (string);
-    function getBytes(bytes32 _key) external view returns (bytes);
-    function getBool(bytes32 _key) external view returns (bool);
-    function getInt(bytes32 _key) external view returns (int);
     // Setters
     function setAddress(bytes32 _key, address _value) external onlyLatestNetworkContract();
     function setUint(bytes32 _key, uint _value) external onlyLatestNetworkContract();
@@ -29,4 +23,11 @@ contract EXOStorageInterface {
     function deleteBytes(bytes32 _key) external onlyLatestNetworkContract();
     function deleteBool(bytes32 _key) external onlyLatestNetworkContract();
     function deleteInt(bytes32 _key) external onlyLatestNetworkContract();
+    // Getters
+    function getAddress(bytes32 _key) external view returns (address);
+    function getUint(bytes32 _key) external view returns (uint);
+    function getString(bytes32 _key) external view returns (string);
+    function getBytes(bytes32 _key) external view returns (bytes);
+    function getBool(bytes32 _key) external view returns (bool);
+    function getInt(bytes32 _key) external view returns (int);
 }

@@ -3,6 +3,7 @@ pragma solidity 0.4.18;
 import "./EXOBase.sol";
 import "./EXOStorage.sol";
 
+
 /**
  * @title EXO Upgrade
  *
@@ -16,7 +17,7 @@ contract EXOUpgrade is EXOBase {
      *
      * @param _exoStorageAddress The eternal storage address of network
      */
-    function EXOUpgrade(address _exoStorageAddress) EXOBase("EXOUpgrade", _exoStorageAddress) public {
+    function EXOUpgrade(address _exoStorageAddress) public EXOBase("EXOUpgrade", _exoStorageAddress) {
         version = 1;
     }
 
@@ -40,9 +41,11 @@ contract EXOUpgrade is EXOBase {
             require(_forceEther == true);
         }
 
-        // Replace the address for the name lookup - contract addresses can be looked up by their name or verified by a reverse address lookup.
+        // Replace the address for the name lookup - contract addresses can be
+        // looked up by their name or verified by a reverse address lookup.
         exoStorage.setAddress(keccak256("contract.name", _name), _upgradedContractAddress);
-        // Add the new contract address for a direct verification using the address (used in EXOStorage to verify its a legit contract using only the msg.sender).
+        // Add the new contract address for a direct verification using the address
+        // (used in EXOStorage to verify its a legit contract using only the msg.sender).
         exoStorage.setAddress(keccak256("contract.address", _upgradedContractAddress), _upgradedContractAddress);
         // Remove the old contract address verification.
         exoStorage.deleteAddress(keccak256("contract.address", oldContractAddress));

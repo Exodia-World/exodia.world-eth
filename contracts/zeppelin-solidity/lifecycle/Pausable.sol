@@ -2,6 +2,7 @@ pragma solidity 0.4.18;
 
 import "../../EXOBase.sol";
 
+
 /**
  * @title Pausable
  * @dev Base contract which allows children to implement an emergency stop mechanism.
@@ -31,7 +32,7 @@ contract Pausable is EXOBase {
     /**
      * @dev called by the owner to pause, triggers stopped state
      */
-    function pause() onlyRole("owner") whenNotPaused public {
+    function pause() public onlyRole("owner") whenNotPaused {
         paused = true;
         Pause();
     }
@@ -39,7 +40,7 @@ contract Pausable is EXOBase {
     /**
      * @dev called by the owner to unpause, returns to normal state
      */
-    function unpause() onlyRole("owner") whenPaused public {
+    function unpause() public onlyRole("owner") whenPaused {
         paused = false;
         Unpause();
     }

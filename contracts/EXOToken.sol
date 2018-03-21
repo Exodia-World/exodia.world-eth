@@ -3,6 +3,7 @@ pragma solidity 0.4.18;
 import "./zeppelin-solidity/token/ERC20/PausableToken.sol";
 import "./EXOBase.sol";
 
+
 /**
  * @title EXO Token
  *
@@ -44,8 +45,10 @@ contract EXOToken is PausableToken {
      * @param _preSaleDuration The duration of pre-sale period in seconds
      * @param _ICODuration The duration of ICO
      * @param _availableICOFund Total amount of tokens that can be bought in ICO
-     * @param _minICOTokensBoughtEveryPurchase The minimum amount of ICO tokens that must be bought by one account for every purchase
-     * @param _maxICOTokensBought The maximum amount of ICO tokens that can be bought by one account for all purchases
+     * @param _minICOTokensBoughtEveryPurchase The minimum amount of ICO tokens that
+     *   must be bought by one account for every purchase
+     * @param _maxICOTokensBought The maximum amount of ICO tokens that can be bought
+     *   by one account for all purchases
      * @param _airdropAmount The airdrop amount for a single account
      */
     function EXOToken(
@@ -60,7 +63,7 @@ contract EXOToken is PausableToken {
         uint256 _minICOTokensBoughtEveryPurchase,
         uint256 _maxICOTokensBought,
         uint256 _airdropAmount
-    ) EXOBase("EXOToken", _exoStorageAddress) public payable
+    ) public EXOBase("EXOToken", _exoStorageAddress) payable
     {
         roleCheck("owner", msg.sender, true);
 
@@ -103,7 +106,10 @@ contract EXOToken is PausableToken {
     }
 
     modifier beforeOrDuringPreSale() {
-        require((preSaleStartTime() == 0 && preSaleDeadline() == 0) || (preSaleStartTime() > 0 && preSaleStartTime() <= now && preSaleDeadline() >= now));
+        require(
+            (preSaleStartTime() == 0 && preSaleDeadline() == 0) ||
+            (preSaleStartTime() > 0 && preSaleStartTime() <= now && preSaleDeadline() >= now)
+        );
         _;
     }
 
@@ -127,37 +133,6 @@ contract EXOToken is PausableToken {
      */
     function () external payable {
         revert();
-    }
-
-    /**
-     * @dev Transfer token for a specified address
-     *
-     * @param _to The address to transfer to.
-     * @param _value The amount to be transferred.
-     */
-    function transfer(address _to, uint256 _value) public whenNotPaused exceptRole("frozen") returns (bool) {
-        // Owner and frozen accounts can't receive tokens.
-        roleCheck("owner", _to, false);
-        roleCheck("frozen", _to, false);
-
-        address primaryHolder_ = primaryHolder();
-        require(msg.sender != primaryHolder_ || balanceOf(primaryHolder_).sub(_value) >= minBalanceForStakeReward);
-
-        return super.transfer(_to, _value);
-    }
-
-    /**
-     * @dev Transfer tokens from one address to another.
-     *
-     * @param _from The address which you want to send tokens from
-     * @param _to The address which you want to transfer to
-     * @param _value The amount of tokens to be transferred
-     */
-    function transferFrom(address _from, address _to, uint256 _value) public whenNotPaused exceptRole("frozen") returns (bool) {
-        roleCheck("frozen", _from, false);
-        roleCheck("owner", _to, false);
-        roleCheck("frozen", _to, false);
-        return super.transferFrom(_from, _to, _value);
     }
 
     /**
@@ -244,7 +219,14 @@ contract EXOToken is PausableToken {
      * The free tokens are added to the _to address' staking balance.
      * @param _to The address which the airdrop is designated to
      */
-    function airdrop(address _to) external whenNotPaused onlyRole("airdropCarrier") exceptRole("frozen") afterICO returns (bool) {
+    function airdrop(address _to)
+        external
+        whenNotPaused
+        onlyRole("airdropCarrier")
+        exceptRole("frozen")
+        afterICO
+        returns (bool)
+    {
         roleCheck("frozen", _to, false);
         require(_to != address(0));
         require(isAirdropped(_to) == false);
@@ -266,7 +248,14 @@ contract EXOToken is PausableToken {
      * Deposited stake is added to the staker's staking balance.
      * @param _value The amount of EXO to deposit
      */
-    function depositStake(uint256 _value) external whenNotPaused exceptRole("frozen") exceptRole("owner") afterICO returns (bool) {
+    function depositStake(uint256 _value)
+        external
+        whenNotPaused
+        exceptRole("frozen")
+        exceptRole("owner")
+        afterICO
+        returns (bool)
+    {
         require(_value > 0 && balanceOf(msg.sender) >= _value);
 
         updateStakeBalance();
@@ -283,7 +272,14 @@ contract EXOToken is PausableToken {
      * Withdrawn stake is added to the staker's liquid balance.
      * @param _value The amount of EXO to withdraw
      */
-    function withdrawStake(uint256 _value) external whenNotPaused exceptRole("frozen") exceptRole("owner") afterICO returns (bool) {
+    function withdrawStake(uint256 _value)
+        external
+        whenNotPaused
+        exceptRole("frozen")
+        exceptRole("owner")
+        afterICO
+        returns (bool)
+    {
         require(_value > 0 && stakeBalanceOf(msg.sender) >= _value);
 
         // No reward if staking has not been for at least 21 days.
@@ -300,9 +296,109 @@ contract EXOToken is PausableToken {
     }
 
     /**
+     * @dev Transfer fund into new treasury carrier's address and publish it.
+     *
+     * At this point, there must be two addresses with access to treasury carrier role.
+     * @param _oldTreasuryCarrier The address of old treasury carrier account
+     * @param _treasuryCarrier The address of new treasury carrier account
+     */
+    function setTreasuryCarrier(address _oldTreasuryCarrier, address _treasuryCarrier)
+        external
+        whenNotPaused
+        onlySuperUser
+        returns (bool)
+    {
+        if (_oldTreasuryCarrier != address(0)) {
+            // Is it really the previous carrier?
+            roleCheck("treasuryCarrier", _oldTreasuryCarrier, true);
+        }
+        roleCheck("treasuryCarrier", _treasuryCarrier, true);
+        roleCheck("preSaleCarrier", _treasuryCarrier, false);
+        roleCheck("airdropCarrier", _treasuryCarrier, false);
+
+        if (_moveFund("treasury", _oldTreasuryCarrier, _treasuryCarrier)) {
+            SetTreasuryCarrier(_oldTreasuryCarrier, _treasuryCarrier);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * @dev Transfer fund into new pre-sale carrier's address and publish it.
+     *
+     * At this point, there must be two addresses with access to pre-sale carrier role.
+     * @param _oldPreSaleCarrier The address of old pre-sale carrier account
+     * @param _preSaleCarrier The address of new pre-sale carrier account
+     */
+    function setPreSaleCarrier(address _oldPreSaleCarrier, address _preSaleCarrier)
+        external
+        whenNotPaused
+        onlySuperUser
+        beforeOrDuringPreSale
+        returns (bool)
+    {
+        if (_oldPreSaleCarrier != address(0)) {
+            // Is it really the previous carrier?
+            roleCheck("preSaleCarrier", _oldPreSaleCarrier, true);
+        }
+        roleCheck("preSaleCarrier", _preSaleCarrier, true);
+        roleCheck("treasuryCarrier", _preSaleCarrier, false);
+        roleCheck("airdropCarrier", _preSaleCarrier, false);
+
+        if (_moveFund("preSale", _oldPreSaleCarrier, _preSaleCarrier)) {
+            SetPreSaleCarrier(_oldPreSaleCarrier, _preSaleCarrier);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * @dev Transfer token for a specified address
+     *
+     * @param _to The address to transfer to.
+     * @param _value The amount to be transferred.
+     */
+    function transfer(address _to, uint256 _value) public whenNotPaused exceptRole("frozen") returns (bool) {
+        // Owner and frozen accounts can't receive tokens.
+        roleCheck("owner", _to, false);
+        roleCheck("frozen", _to, false);
+
+        address primaryHolder_ = primaryHolder();
+        require(msg.sender != primaryHolder_ || balanceOf(primaryHolder_).sub(_value) >= minBalanceForStakeReward);
+
+        return super.transfer(_to, _value);
+    }
+
+    /**
+     * @dev Transfer tokens from one address to another.
+     *
+     * @param _from The address which you want to send tokens from
+     * @param _to The address which you want to transfer to
+     * @param _value The amount of tokens to be transferred
+     */
+    function transferFrom(address _from, address _to, uint256 _value)
+        public
+        whenNotPaused
+        exceptRole("frozen")
+        returns (bool)
+    {
+        roleCheck("frozen", _from, false);
+        roleCheck("owner", _to, false);
+        roleCheck("frozen", _to, false);
+        return super.transferFrom(_from, _to, _value);
+    }
+
+    /**
      * @dev Update a staker's balance with staking interest.
      */
-    function updateStakeBalance() public whenNotPaused exceptRole("frozen") exceptRole("owner") afterICO returns (uint256) {
+    function updateStakeBalance()
+        public
+        whenNotPaused
+        exceptRole("frozen")
+        exceptRole("owner")
+        afterICO
+        returns (uint256)
+    {
         // Has the staking been for at least 21 days?
         require(now.sub(stakeStartTimeOf(msg.sender)) >= 21 days);
 
@@ -328,7 +424,9 @@ contract EXOToken is PausableToken {
      */
     function calculateInterest() public view exceptRole("owner") afterICO returns (uint256) {
         address primaryHolder_ = primaryHolder();
-        if (stakeBalanceOf(msg.sender) == 0 || stakeStartTimeOf(msg.sender) == 0 || balanceOf(primaryHolder_) == 0) {return 0;}
+        if (stakeBalanceOf(msg.sender) == 0 || stakeStartTimeOf(msg.sender) == 0 || balanceOf(primaryHolder_) == 0) {
+            return 0;
+        }
 
         uint256 totalInterest = 0;
         uint256 stakeDays = 0;
@@ -366,85 +464,6 @@ contract EXOToken is PausableToken {
         }
 
         return balanceOf(primaryHolder_) >= totalInterest ? totalInterest : balanceOf(primaryHolder_);
-    }
-
-    /**
-     * @dev Transfer fund into new treasury carrier's address and publish it.
-     *
-     * At this point, there must be two addresses with access to treasury carrier role.
-     * @param _oldTreasuryCarrier The address of old treasury carrier account
-     * @param _treasuryCarrier The address of new treasury carrier account
-     */
-    function setTreasuryCarrier(address _oldTreasuryCarrier, address _treasuryCarrier) external whenNotPaused onlySuperUser returns (bool) {
-        if (_oldTreasuryCarrier != address(0)) {
-            // Is it really the previous carrier?
-            roleCheck("treasuryCarrier", _oldTreasuryCarrier, true);
-        }
-        roleCheck("treasuryCarrier", _treasuryCarrier, true);
-        roleCheck("preSaleCarrier", _treasuryCarrier, false);
-        roleCheck("airdropCarrier", _treasuryCarrier, false);
-
-        if (_moveFund("treasury", _oldTreasuryCarrier, _treasuryCarrier)) {
-            SetTreasuryCarrier(_oldTreasuryCarrier, _treasuryCarrier);
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * @dev Transfer fund into new pre-sale carrier's address and publish it.
-     *
-     * At this point, there must be two addresses with access to pre-sale carrier role.
-     * @param _oldPreSaleCarrier The address of old pre-sale carrier account
-     * @param _preSaleCarrier The address of new pre-sale carrier account
-     */
-    function setPreSaleCarrier(address _oldPreSaleCarrier, address _preSaleCarrier) external whenNotPaused onlySuperUser beforeOrDuringPreSale returns (bool) {
-        if (_oldPreSaleCarrier != address(0)) {
-            // Is it really the previous carrier?
-            roleCheck("preSaleCarrier", _oldPreSaleCarrier, true);
-        }
-        roleCheck("preSaleCarrier", _preSaleCarrier, true);
-        roleCheck("treasuryCarrier", _preSaleCarrier, false);
-        roleCheck("airdropCarrier", _preSaleCarrier, false);
-
-        if (_moveFund("preSale", _oldPreSaleCarrier, _preSaleCarrier)) {
-            SetPreSaleCarrier(_oldPreSaleCarrier, _preSaleCarrier);
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * @dev Move remaining fund to a new carrier.
-     *
-     * @param _lockedFundName The name of fund to be released if the first carrier is set
-     * @param _oldCarrier The old carrier of fund
-     * @param _newCarrier The new carrier of fund
-     */
-    function _moveFund(bytes32 _lockedFundName, address _oldCarrier, address _newCarrier) private onlySuperUser returns (bool) {
-        // Check for non-sensical address and possibility of abuse.
-        require(_oldCarrier != _newCarrier && _newCarrier != address(0) && _newCarrier != primaryHolder());
-        require(balanceOf(_newCarrier) == 0); // burn check!
-
-        uint256 lockedFund = lockedFundOf(_lockedFundName);
-
-        if (lockedFund == 0 && _oldCarrier != address(0)) {
-            // Move fund from old carrier to new carrier.
-            // WARNING: Everything will be transferred.
-            balanceOf(_newCarrier, balanceOf(_oldCarrier));
-            balanceOf(_oldCarrier, 0);
-            Transfer(_oldCarrier, _newCarrier, balanceOf(_newCarrier));
-        } else if (lockedFund > 0 && _oldCarrier == address(0)) {
-            // Release fund to new carrier.
-            balanceOf(_newCarrier, lockedFund);
-            lockedFundOf(_lockedFundName, 0);
-            Transfer(this, _newCarrier, balanceOf(_newCarrier));
-        } else {
-            // Revert if anything unexpected happens.
-            revert();
-        }
-
-        return true;
     }
 
     /**
@@ -539,6 +558,43 @@ contract EXOToken is PausableToken {
      */
     function stakeStartTimeOf(address _staker) public view returns (uint256) {
         return exoStorage.getUint(keccak256("token.stakes", "startTime", _staker));
+    }
+
+    /**
+     * @dev Move remaining fund to a new carrier.
+     *
+     * @param _lockedFundName The name of fund to be released if the first carrier is set
+     * @param _oldCarrier The old carrier of fund
+     * @param _newCarrier The new carrier of fund
+     */
+    function _moveFund(bytes32 _lockedFundName, address _oldCarrier, address _newCarrier)
+        private
+        onlySuperUser
+        returns (bool)
+    {
+        // Check for non-sensical address and possibility of abuse.
+        require(_oldCarrier != _newCarrier && _newCarrier != address(0) && _newCarrier != primaryHolder());
+        require(balanceOf(_newCarrier) == 0); // burn check!
+
+        uint256 lockedFund = lockedFundOf(_lockedFundName);
+
+        if (lockedFund == 0 && _oldCarrier != address(0)) {
+            // Move fund from old carrier to new carrier.
+            // WARNING: Everything will be transferred.
+            balanceOf(_newCarrier, balanceOf(_oldCarrier));
+            balanceOf(_oldCarrier, 0);
+            Transfer(_oldCarrier, _newCarrier, balanceOf(_newCarrier));
+        } else if (lockedFund > 0 && _oldCarrier == address(0)) {
+            // Release fund to new carrier.
+            balanceOf(_newCarrier, lockedFund);
+            lockedFundOf(_lockedFundName, 0);
+            Transfer(this, _newCarrier, balanceOf(_newCarrier));
+        } else {
+            // Revert if anything unexpected happens.
+            revert();
+        }
+
+        return true;
     }
 
     /**

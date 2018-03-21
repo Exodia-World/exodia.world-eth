@@ -4,6 +4,7 @@ import "./EXOBase.sol";
 import "./interfaces/EXORoleInterface.sol";
 import "./interfaces/EXOStorageInterface.sol";
 
+
 /**
  * @title EXO Role
  *
@@ -14,7 +15,7 @@ contract EXORole is EXORoleInterface, EXOBase {
     event RoleRemoved(string roleName, address indexed account);
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
-    function EXORole(address _exoStorageAddress) EXOBase("EXORole", _exoStorageAddress) public {
+    function EXORole(address _exoStorageAddress) public EXOBase("EXORole", _exoStorageAddress) {
         version = 1;
     }
 
@@ -27,14 +28,18 @@ contract EXORole is EXORoleInterface, EXOBase {
         require(_newOwner != address(0));
 
         exoStorage.deleteBool(keccak256("access.role", "owner", msg.sender));
-        exoStorage.setBool(keccak256("access.role",  "owner", _newOwner), true);
+        exoStorage.setBool(keccak256("access.role", "owner", _newOwner), true);
         OwnershipTransferred(msg.sender, _newOwner);
     }
 
     /**
      * @dev Transfer an address' access to this role to another address.
      */
-    function roleTransfer(string _role, address _oldAddress, address _address) external onlyLatestVersionOf(this) onlySuperUser {
+    function roleTransfer(string _role, address _oldAddress, address _address)
+        external
+        onlyLatestVersionOf(this)
+        onlySuperUser
+    {
         _roleRemove(_role, _oldAddress);
         _roleAdd(_role, _address);
     }
@@ -59,7 +64,7 @@ contract EXORole is EXORoleInterface, EXOBase {
     function _roleAdd(string _role, address _address) internal {
         require(_address != address(0));
         require(keccak256(_role) != keccak256("owner")); // only one owner to rule them all
-        require(! roleHas("owner", _address) || keccak256(_role) != keccak256("frozen")); // owner can't be frozen
+        require(!roleHas("owner", _address) || keccak256(_role) != keccak256("frozen")); // owner can't be frozen
 
         exoStorage.setBool(keccak256("access.role", _role, _address), true);
         RoleAdded(_role, _address);
@@ -69,7 +74,7 @@ contract EXORole is EXORoleInterface, EXOBase {
      * @dev Remove an address' access to this role.
      */
     function _roleRemove(string _role, address _address) internal {
-        require(! roleHas("owner", _address)); // no one can remove owner's access
+        require(!roleHas("owner", _address)); // no one can remove owner's access
 
         exoStorage.deleteBool(keccak256("access.role", _role, _address));
         RoleRemoved(_role, _address);

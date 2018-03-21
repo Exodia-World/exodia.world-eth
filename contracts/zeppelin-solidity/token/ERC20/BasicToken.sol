@@ -4,6 +4,7 @@ import "./ERC20Basic.sol";
 import "../../math/SafeMath.sol";
 import "../../../EXOBase.sol";
 
+
 /**
  * @title Basic token
  * @dev Basic version of StandardToken, with no allowances.
