@@ -38,7 +38,7 @@ Run the above command to build our contracts and store their ABIs into the `buil
 
 ## Linting
 
-    ./solhint "contracts/\*\*/\*.sol"
+    ./solhint
 
 Run the above command to lint our contracts with Solhint. Fix all errors reported and avoid warnings whenever practical.
 
