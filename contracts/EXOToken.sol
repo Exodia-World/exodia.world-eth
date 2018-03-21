@@ -83,10 +83,10 @@ contract EXOToken is PausableToken {
             availableICOFund(initialICOFund);
 
             // Calculate remaining balance for stake reward.
-            balanceOf(msg.sender, totalSupply()
-                .sub(lockedFundOf("treasury"))
-                .sub(lockedFundOf("preSale"))
-                .sub(initialICOFund));
+            balanceOf(
+                msg.sender,
+                totalSupply().sub(lockedFundOf("treasury")).sub(lockedFundOf("preSale")).sub(initialICOFund)
+            );
 
             assert(balanceOf(msg.sender) >= minBalanceForStakeReward);
         }
