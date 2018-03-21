@@ -49,16 +49,6 @@ contract EXOBase {
     }
 
     /**
-     * @dev Check if an address has this role.
-     *
-     * @param _role //
-     * @param _address //
-     */
-    function roleHas(string _role, address _address) internal view returns (bool) {
-        return exoStorage.getBool(keccak256("access.role", _role, _address));
-    }
-
-    /**
      * @dev Check if an address has this role, reverts if it doesn't.
      *
      * @param _role //
@@ -67,6 +57,16 @@ contract EXOBase {
      */
     function roleCheck(string _role, address _address, bool _hasRole) internal view {
         require(roleHas(_role, _address) == _hasRole);
+    }
+
+    /**
+     * @dev Check if an address has this role.
+     *
+     * @param _role //
+     * @param _address //
+     */
+    function roleHas(string _role, address _address) internal view returns (bool) {
+        return exoStorage.getBool(keccak256("access.role", _role, _address));
     }
 
     /**
