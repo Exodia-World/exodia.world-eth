@@ -38,9 +38,9 @@ Run the above command to build our contracts and store their ABIs into the `buil
 
 ## Linting
 
-    ./solium -d contracts
+    ./solhint "contracts/\*\*/\*.sol"
 
-Run the above command to lint our contracts with Solium. Fix all errors reported and avoid warnings whenever practical.
+Run the above command to lint our contracts with Solhint. Fix all errors reported and avoid warnings whenever practical.
 
 ## Migration
 
@@ -89,7 +89,7 @@ This list is compiled from
 - Handle known and expected errors
 - Test the corner cases of every function
 - Include fail-safe mode
-- Eliminate any usage of deprecated features and styles
+- Comply with security best practices and style standards
 
 ### Contract
 
