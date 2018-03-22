@@ -9,7 +9,8 @@ module.exports = {
       host: "127.0.0.1",
       port: 8545,
       from: "", // testnet main account address
-      network_id: 4
+      network_id: 4,
+      gas: 8000000
     }
   }
 };
