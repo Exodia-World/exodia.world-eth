@@ -14,6 +14,7 @@
   "license": "ISC",
   "dependencies": {
     "solhint": "^1.1.10",
+    "truffle-hdwallet-provider": "0.0.3",
     "web3-utils": "^1.0.0-beta.30",
     "zeppelin-solidity": "1.6.0"
   },

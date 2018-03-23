@@ -1,3 +1,8 @@
+var HDWalletProvider = require('truffle-hdwallet-provider');
+
+// Do NOT use the same mnemonic for mainnet accounts.
+var testNetAccountMnemonic = 'decorate history baby ostrich middle battle verify east grunt body clean various';
+
 module.exports = {
   networks: {
     development: {
@@ -6,9 +11,9 @@ module.exports = {
       network_id: "*"
     },
     rinkeby: {
-      host: "127.0.0.1",
-      port: 8545,
-      from: "", // testnet main account address
+      provider: function () {
+        return new HDWalletProvider(testNetAccountMnemonic, 'https://rinkeby.infura.io/RBI9AwKu0qhsYeHXcqqr');
+      },
       network_id: 4,
       gas: 8000000
     }
