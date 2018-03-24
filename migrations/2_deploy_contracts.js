@@ -21,7 +21,7 @@ module.exports = async function(deployer) {
       3650, // minimum ICO tokens bought every purchase (1 ETH)
       18250, // maximum ICO tokens bought for all purchases (5 ETH)
       10, // airdrop amount
-      {gas: 8000000}
+      {gas: 7000000}
     );
 
     return EXOStorage.deployed().then(async exoStorage => {
