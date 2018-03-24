@@ -1,0 +1,37 @@
+==== 24/03/2018 15:00 ====
+
+Using network 'rinkeby'.
+
+Running migration: 1_initial_migration.js
+  Deploying Migrations...
+  ... 0xba1b5e91a0e952d4dca9033ba7a66c047bd3019af631f6bc21f490d564593072
+  Migrations: 0x51003d2fe9f3afd30131a77a9846aecdd9110d69
+Saving successful migration to network...
+  ... 0x651d546e88ae3d3d389dece78df5421bf35a02748a41407dd72e6b196bfb84fb
+Saving artifacts...
+Running migration: 2_deploy_contracts.js
+  Deploying EXOStorage...
+  ... 0xf1d2d6210fec7dd27ce5a727e836c20087e2fac4f915f9cc680fc2e7aea14f63
+  EXOStorage: 0x3bc3470489c92f2859d6ab0a2a6c046d6843237f
+  Deploying EXOUpgrade...
+  ... 0x2c797f14cd838946bf8b45f3afc157922ef48018d394416ebd0f4b436c7789b5
+  EXOUpgrade: 0x58b8010bd48ce4bb7709143b18b95dbd5361bdb5
+  Deploying EXORole...
+  ... 0x3df871023d64e577c3a8e29f4183ec5bbcd7fc1cc98286b4ffc6c50061977896
+  EXORole: 0x4ec37e2760a82fe0b9aadc5c9fbc83af746fe037
+  Deploying EXOToken...
+  ... 0x0f4f9a808506000372c00b5c7cf06b495701a834f7a4395b1ad2559d7418aa08
+  EXOToken: 0x25994339bc3140d41bd27297a494b90f08af70ee
+  ... 0xbd4fe132fef8299da558fea0fb7847ba5e824fb4673ffef782599bb36e72832c
+  ... 0xb0e2b92353a6b1a7141a9afc344d8e05a007af9cd5fe89ce08b0f8f140ed7e5b
+  ... 0x65c98ae69d59061ff504b05cac8d670170f2589b49c42afc954f6fea0001a3cf
+  ... 0x61e83009647e24556c3cefdbfd4a2496fc7600bedb62eb27a48ef2a281405006
+  ... 0x472a030ca80da21a2cc3cce4bdd0d69beddecc0d77b842e3768c39d825af3690
+  ... 0x87cac7afaf85236ad653c47657303e1cc63f735287e0a12d1469e4636ea19f7e
+  ... 0x00830606ea3b928db724e382decd5a2619d7f6161aefb908aa4194388ee0bfe7
+  Running step...
+Saving successful migration to network...
+  ... 0xf1c9a040901ed7de56250db82227abf3f0319b8e9178ac38f39ee015d3cdfbb4
+Saving artifacts...
+
+========
