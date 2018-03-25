@@ -74,9 +74,9 @@ Run the below command to migrate our contracts to the Ethereum local test networ
 
     ./truffle migrate --network rinkeby
 
-Before migration, ensure that the account used for deployment as seen in `truffle.js` has enough ether. If that is not the case, request for some at (Rinkeby Faucet)[https://faucet.rinkeby.io/].
+Before migration, ensure that the account used for deployment as seen in `truffle.js` has enough ether. If that is not the case, request for some at [Rinkeby Faucet](https://faucet.rinkeby.io/).
 
-After a successful *public* migration, append output of the command to the beginning of `mirgrations/history.txt` file. We can retrieve contract addresses from it later.
+After a successful *public* migration, append output of the command to the beginning of `migrations/history.txt` file. We can retrieve contract addresses from it later.
 
 **WARNING**: Do NOT use the same account for both testnet and mainnet deployments.
 
