@@ -8,9 +8,11 @@ A decentralized digital gaming marketplace and platform that enables game studio
 
 This project hosts Ethereum contracts for Exodia.World. Contract development, testing, and deployment are performed here.
 
+
 ## Overview
 
 exodia.world-eth is built on top of [Truffle](http://truffleframework.com/). Using Truffle, we can easily write contracts + automated tests and deploy our contracts to any network.
+
 
 ## Initialization
 
@@ -22,11 +24,6 @@ exodia.world-eth is built on top of [Truffle](http://truffleframework.com/). Usi
 
 3. Run `npm install` to install all dependencies.
 
-## Development
-
-For development, we use an Ethereum local test network and [ganache-cli](https://github.com/trufflesuite/ganache-cli) as its RPC client. Run the following to start the network.
-
-    ./ganache-cli-x
 
 ## Compilation
 
@@ -35,6 +32,7 @@ For development, we use an Ethereum local test network and [ganache-cli](https:/
 Run the above command to build our contracts and store their ABIs into the `build/contracts` directory.
 
 **Note**: This process is optional as it's always run automatically before migration or testing.
+
 
 ## Linting
 
@@ -46,15 +44,6 @@ The goal is to review the lint results for security issues. Use common sense at 
 
 **WARNING**: Do NOT change third-party contracts carelessly.
 
-## Migration
-
-    ./truffle migrate
-
-Run the above command to migrate our contracts to the Ethereum local test network provided by ganache-cli.
-
-**Note**: This process is optional as it's always run automatically before testing.
-
-If you want to add or modify the migration scripts, they are all in the `migrations` directory.
 
 ## Testing
 
@@ -66,13 +55,52 @@ Run the above command to run all tests (for every contract). To run only specifi
 
 Add more tests to the `test` directory. Please do so. Code is incomplete without its tests.
 
+
+## Migration
+
+### Ganache Local Test Network
+
+For development, we use an Ethereum local test network with [ganache-cli](https://github.com/trufflesuite/ganache-cli) as its client. Run the following to start.
+
+    ./ganache-cli-x
+
+Run the below command to migrate our contracts to the Ethereum local test network provided by ganache-cli.
+
+    ./truffle migrate
+
+**Note**: This process is optional as it's always run automatically before testing.
+
+### Rinkeby Public Test Network
+
+    ./truffle migrate --network rinkeby
+
+Before migration, ensure that the account used for deployment as seen in `truffle.js` has enough ether. If that is not the case, request for some at (Rinkeby Faucet)[https://faucet.rinkeby.io/].
+
+After a successful *public* migration, append output of the command to the beginning of `mirgrations/history.txt` file. We can retrieve contract addresses from it later.
+
+**WARNING**: Do NOT use the same account for both testnet and mainnet deployments.
+
+If you want to add or modify the migration scripts, they are all in the `migrations` directory.
+
+
+## Upgrading
+
+To upgrade individual contracts, run the corresponding scripts in the `migrations` directory. For example:
+
+    ./truffle exec upgrade_exo_token.js --network rinkeby // omit --network flag for local upgrades
+
+Again, record the *public* upgrades in `migrations/history.txt`. This practice will be automated in the future.
+
+
 ## Configuration
 
 Much of the configuration can be done in the `truffle.js` or by passing arguments to ganache-cli in `ganache-cli-x`.
 
+
 ## Resources
 
 [Truffle's Documentation](http://truffleframework.com/docs/)
+
 
 ## Security Checklist
 
