@@ -24,9 +24,13 @@ module.exports = function (callback) {
       .then(result => {
         if (parseInt(result.receipt.status, 16) === 1) {
           console.log('EXOToken upgrade - SUCCESS');
+          console.log('Transaction', result.receipt.transactionHash);
+          console.log('Contract lives at', exoToken.address);
           callback();
         } else {
-          callback(new Error('EXOToken upgrade - FAIL'));
+          console.log('EXOToken upgrade - FAIL');
+          console.log('Transaction', result.receipt.transactionHash);
+          callback(new Error());
         }
       });
   });

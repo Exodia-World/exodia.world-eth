@@ -8,9 +8,13 @@ module.exports = function (callback) {
       .then(result => {
         if (parseInt(result.receipt.status, 16) === 1) {
           console.log('EXOUpgrade upgrade - SUCCESS');
+          console.log('Transaction', result.receipt.transactionHash);
+          console.log('Contract lives at', _exoUpgrade.address);
           callback();
         } else {
-          callback(new Error('EXOUpgrade upgrade - FAIL'));
+          console.log('EXOUpgrade upgrade - FAIL');
+          console.log('Transaction', result.receipt.transactionHash);
+          callback(new Error());
         }
       });
   });

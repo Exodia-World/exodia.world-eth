@@ -9,9 +9,13 @@ module.exports = function (callback) {
       .then(result => {
         if (parseInt(result.receipt.status, 16) === 1) {
           console.log('EXORole upgrade - SUCCESS');
+          console.log('Transaction', result.receipt.transactionHash);
+          console.log('Contract lives at', exoRole.address);
           callback();
         } else {
-          callback(new Error('EXORole upgrade - FAIL'));
+          console.log('EXORole upgrade - FAIL');
+          console.log('Transaction', result.receipt.transactionHash);
+          callback(new Error());
         }
       });
   });
