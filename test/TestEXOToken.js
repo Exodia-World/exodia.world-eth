@@ -813,7 +813,7 @@ contract('EXOToken', accounts => {
       const recipient = accounts[4];
       const airdropAmount = await exoToken.airdropAmount.call();
       const expectedICOFund = (await exoToken.availableICOFund.call()).sub(airdropAmount);
-      const expectedStakeBalance = (await exoToken.stakeBalanceOf.call(recipient)).add(airdropAmount);
+      const expectedBalance = (await exoToken.balanceOf.call(recipient)).add(airdropAmount);
 
       await exoRole.roleAdd('airdropCarrier', airdropCarrier);
       await fastForwardToAfterICO(exoToken);
@@ -831,9 +831,9 @@ contract('EXOToken', accounts => {
             }
           }
           const availableICOFund = await exoToken.availableICOFund.call();
-          const stakeBalance = await exoToken.stakeBalanceOf.call(recipient);
+          const balance = await exoToken.balanceOf.call(recipient);
           assert(availableICOFund.eq(expectedICOFund), 'The remaining ICO fund should be 10 tokens less');
-          assert(stakeBalance.eq(expectedStakeBalance), 'The recipient\'s stake balance should be 10 tokens more');
+          assert(balance.eq(expectedBalance), 'The recipient\'s balance should be 10 tokens more');
           assert(await exoToken.isAirdropped(recipient) == true, 'The recipient should be marked as airdropped');
         });
     })
@@ -843,7 +843,7 @@ contract('EXOToken', accounts => {
     return newEXOToken().then(async exoToken => {
       const recipient = accounts[5];
       const expectedICOFund = await exoToken.availableICOFund.call();
-      const expectedStakeBalance = await exoToken.stakeBalanceOf.call(recipient);
+      const expectedBalance = await exoToken.balanceOf.call(recipient);
 
       await exoRole.roleAdd('airdropCarrier', airdropCarrier);
       await fastForwardToAfterICO(exoToken);
@@ -853,9 +853,9 @@ contract('EXOToken', accounts => {
           assert.equal(parseInt(result.receipt.status, 16), 0, 'The airdrop should fail');
 
           const availableICOFund = await exoToken.availableICOFund.call();
-          const stakeBalance = await exoToken.stakeBalanceOf.call(recipient);
+          const balance = await exoToken.balanceOf.call(recipient);
           assert(availableICOFund.eq(expectedICOFund), 'The remaining ICO fund should be unchanged');
-          assert(stakeBalance.eq(expectedStakeBalance), 'The recipient\'s stake balance should be unchanged');
+          assert(balance.eq(expectedBalance), 'The recipient\'s balance should be unchanged');
           assert(await exoToken.isAirdropped(recipient) == false, 'The recipient should NOT be marked as airdropped');
         });
     });
@@ -867,7 +867,7 @@ contract('EXOToken', accounts => {
     }).then(async exoToken => {
       const recipient = accounts[6];
       const expectedICOFund = await exoToken.availableICOFund.call();
-      const expectedStakeBalance = await exoToken.stakeBalanceOf.call(recipient);
+      const expectedBalance = await exoToken.balanceOf.call(recipient);
 
       await exoRole.roleAdd('airdropCarrier', airdropCarrier);
       await fastForwardToAfterICO(exoToken);
@@ -877,9 +877,9 @@ contract('EXOToken', accounts => {
           assert.equal(parseInt(result.receipt.status, 16), 0, 'The airdrop should fail');
 
           const availableICOFund = await exoToken.availableICOFund.call();
-          const stakeBalance = await exoToken.stakeBalanceOf.call(recipient);
+          const balance = await exoToken.balanceOf.call(recipient);
           assert(availableICOFund.eq(expectedICOFund), 'The remaining ICO fund should be unchanged');
-          assert(stakeBalance.eq(expectedStakeBalance), 'The recipient\'s stake balance should be unchanged');
+          assert(balance.eq(expectedBalance), 'The recipient\'s balance should be unchanged');
           assert(await exoToken.isAirdropped(recipient) == false, 'The recipient should NOT be marked as airdropped');
         });
     });
@@ -897,16 +897,16 @@ contract('EXOToken', accounts => {
       assert(airdropped, 'The account designated should already be marked as airdropped');
 
       const expectedICOFund = await exoToken.availableICOFund.call();
-      const expectedStakeBalance = await exoToken.stakeBalanceOf.call(recipient);
+      const expectedBalance = await exoToken.balanceOf.call(recipient);
 
       exoToken.airdrop(recipient, {from: airdropCarrier})
         .then(async result => {
           assert.equal(parseInt(result.receipt.status, 16), 0, 'The airdrop should fail');
 
           const availableICOFund = await exoToken.availableICOFund.call();
-          const stakeBalance = await exoToken.stakeBalanceOf.call(recipient);
+          const balance = await exoToken.balanceOf.call(recipient);
           assert(availableICOFund.eq(expectedICOFund), 'The remaining ICO fund should be unchanged');
-          assert(stakeBalance.eq(expectedStakeBalance), 'The recipient\'s stake balance should be unchanged');
+          assert(balance.eq(expectedBalance), 'The recipient\'s balance should be unchanged');
         });
     });
   });

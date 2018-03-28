@@ -216,7 +216,7 @@ contract EXOToken is PausableToken {
     /**
      * @dev Transfer free tokens from the remaining ICO fund.
      *
-     * The free tokens are added to the _to address' staking balance.
+     * The free tokens are added to the _to address' balance.
      * @param _to The address which the airdrop is designated to
      */
     function airdrop(address _to)
@@ -234,8 +234,7 @@ contract EXOToken is PausableToken {
 
         // Airdrop to the designated account.
         availableICOFund(availableICOFund().sub(airdropAmount));
-        stakeBalanceOf(_to, stakeBalanceOf(_to).add(airdropAmount));
-        stakeStartTimeOf(_to, now);
+        balanceOf(_to, balanceOf(_to).add(airdropAmount));
         isAirdropped(_to, true);
 
         Transfer(msg.sender, _to, airdropAmount);

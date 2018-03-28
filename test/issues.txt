@@ -9,6 +9,13 @@ secondEligibleStakingDays=52353
 expectedTotalInterest=373541095890410958903
 interest=373493150684931506848
 
+--FAILED INTEREST CALCULATION--
+randomDays=12565
+firstEligibleStakingDays=1092
+secondEligibleStakingDays=11473
+expectedTotalInterest=93541095890410958903
+interest=93493150684931506848
+
 /////////
 
 Contract: EXOToken should NOT be possible to withdraw stake tokens if account is frozen:
