@@ -1,3 +1,13 @@
+==== 29/03/2018 13:05 ====
+
+Using network 'rinkeby'.
+
+Loading contracts..
+EXOToken upgrade - SUCCESS
+Transaction 0x820162670bc2abd016c84f6c07ac75574ee4fd5691155a576f965cb351172ed3
+Contract lives at 0x13974e705cbbcc8fef113ead43cb8161888e6b64
+Saving contracts..
+
 ==== 24/03/2018 15:00 ====
 
 Using network 'rinkeby'.
