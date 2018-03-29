@@ -16,6 +16,18 @@ secondEligibleStakingDays=11473
 expectedTotalInterest=93541095890410958903
 interest=93493150684931506848
 
+--FAILED INTEREST CALCULATION--
+randomDays=59444
+firstEligibleStakingDays=1092
+secondEligibleStakingDays=58352
+expectedTotalInterest=414630136986301369862
+interest=414582191780821917807
+
+/////////
+
+After running ~80 tests, they will start to fail and ganache-cli has to be restarted.
+This doesn't seem to happen on all computers. I separated the EXO Token tests just in case.
+
 /////////
 
 Contract: EXOToken should NOT be possible to withdraw stake tokens if account is frozen:
