@@ -89,7 +89,7 @@ To upgrade individual contracts, run the corresponding scripts in the `migration
 
     ./truffle exec upgrade_exo_token.js --network rinkeby // omit --network flag for local upgrades
 
-Again, record the *public* upgrades in `migrations/history.txt`. This practice will be automated in the future.
+Record *public* upgrades in `migrations/history.txt`. This practice will be automated in the future. The latest deployed contract addresses are written in `migrations/contracts.json`.
 
 
 ## Configuration
