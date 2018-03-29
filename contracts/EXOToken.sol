@@ -65,6 +65,7 @@ contract EXOToken is PausableToken {
         uint256 _airdropAmount
     ) public EXOBase("EXOToken", _exoStorageAddress) payable
     {
+        version = 1;
         roleCheck("owner", msg.sender, true);
 
         // Set all values not stored in the eternal storage.
