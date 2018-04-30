@@ -18,8 +18,6 @@ exodia.world-eth is built on top of [Truffle](http://truffleframework.com/). Usi
 
 1. Clone this repository.
 
-	git clone git@bitbucket.org:exodia-world/exodia.world-eth.git
-
 2. Ensure that npm and node have been installed in the local machine.
 
 3. Run `npm install` to install all dependencies.
