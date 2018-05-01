@@ -65,3 +65,7 @@ Any contribution has to comply to our code of conduct. Please read it [here](./C
 # Where can I ask for help?
 
 You can get help from our friendly community by hopping into our #exodia-world IRC channel on Freenode or our [project channel on DecStack](https://hub.decstack.com/projects/channels/exodia-world).
+
+# How can I contribute even more?
+
+The above guide is for the open-source community. None of the contributors are expected to do committed work for any amount of time. However, if you would like to work with us more closely and commit yourself to Exodia.World, you may apply to join our core team. We reward our core team members with EXO tokens. The rewards are released at the end of each completed milestone. For more information, please contact us at team@exodia.world.
