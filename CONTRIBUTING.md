@@ -35,8 +35,9 @@ When filing an issue, make sure to answer these five questions:
 
 1. Is this really a bug? If you're unsure, please read **Where can I ask for help?** to reach out to our community.
 2. What operating system and processor architecture are you using?
-..* (*for desktop client*) What version of Exodia.World are you using?
-..* (*for web client*) What browser and its version are you using?
+    * (*for desktop client*) What version of Exodia.World are you using?
+    * (*for web client*) What browser and its version are you using?
+
 3. What did you do?
 4. What did you expect to see?
 5. What did you see instead?
