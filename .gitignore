@@ -1,3 +1,6 @@
+# App specific
+eth.json
+
 # Logs
 logs
 *.log

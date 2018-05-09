@@ -2,6 +2,7 @@ const HDWalletProvider = require('truffle-hdwallet-provider');
 
 // Do NOT use the same mnemonic for mainnet accounts.
 const testNetAccountMnemonic = 'decorate history baby ostrich middle battle verify east grunt body clean various';
+const eth: any = require('./eth.json');
 
 module.exports = {
   networks: {
@@ -12,7 +13,7 @@ module.exports = {
     },
     rinkeby: {
       provider: function () {
-        return new HDWalletProvider(testNetAccountMnemonic, 'https://rinkeby.infura.io/RBI9AwKu0qhsYeHXcqqr');
+        return new HDWalletProvider(testNetAccountMnemonic, eth.INFURA_ADDRESS);
       },
       network_id: 4,
       gas: 7000000
