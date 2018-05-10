@@ -91,7 +91,7 @@ Record *public* upgrades in `migrations/history.txt`. This practice will be auto
 
 ## Release
 
-After migrations or upgrades, export the final contract JSONs to be used in [Exodia.World Web Client]() by running `./helpers/release.js`. Copy files in the `release` directory into the `src/app/contracts` directory of the web client.
+After migrations or upgrades, export the final contract JSONs to be used in [Exodia.World Web Client](https://github.com/Exodia-World/exodia.world-web-client) by running `./helpers/release.js`. Copy files in the `release` directory into the `src/app/contracts` directory of the web client.
 
 
 ## Configuration
