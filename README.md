@@ -89,6 +89,11 @@ To upgrade individual contracts, run the corresponding scripts in the `migration
 Record *public* upgrades in `migrations/history.txt`. This practice will be automated in the future. The latest deployed contract addresses are written in `migrations/contracts.json`.
 
 
+## Release
+
+After migrations or upgrades, export the final contract JSONs to be used in [Exodia.World Web Client]() by running `./helpers/release.js`. Copy files in the `release` directory into the `src/app/contracts` directory of the web client.
+
+
 ## Configuration
 
 Much of the configuration can be done in the `truffle.js` or by passing arguments to ganache-cli in `ganache-cli-x`.
