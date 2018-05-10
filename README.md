@@ -17,10 +17,9 @@ exodia.world-eth is built on top of [Truffle](http://truffleframework.com/). Usi
 ## Initialization
 
 1. Clone this repository.
-
 2. Ensure that npm and node have been installed in the local machine.
-
 3. Run `npm install` to install all dependencies.
+4. Copy `sample.eth.json` into `eth.json` and configure it accordingly.
 
 
 ## Compilation
