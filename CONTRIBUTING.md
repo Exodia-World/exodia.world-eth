@@ -29,7 +29,7 @@ However, please don't use the issue tracker for matters other than the listed ab
 
 # How do I report a bug?
 
-If you find a security vulnerability, do NOT open an issue. Email security@exodia.world instead.
+If you find a security vulnerability, do NOT open an issue. Direct message [one of our maintainers](https://hub.decstack.com/decstack/messages/@vhz) on DecStack instead.
 
 When filing an issue, make sure to answer these five questions:
 
@@ -68,4 +68,4 @@ You can get help from our friendly community by hopping into our #exodia-world I
 
 # How can I contribute even more?
 
-The above guide is for the open-source community. None of the contributors are expected to do committed work for any amount of time. However, if you would like to work with us more closely and commit yourself to Exodia.World, you may apply to join our core team. We reward our core team members with EXO tokens. The rewards are released at the end of each completed milestone. For more information, please contact us at team@exodia.world.
+The above guide is for the open-source community. None of the contributors are expected to do committed work for any amount of time. However, if you would like to work with us more closely and commit yourself to Exodia.World, you may apply to join our core team. We reward our core team members with EXO tokens. The rewards are released at the end of each completed milestone. For more information, please direct message [one of our maintainers](https://hub.decstack.com/decstack/messages/@vhz) on DecStack.
