@@ -67,13 +67,17 @@ Run the below command to migrate our contracts to the Ethereum local test networ
 
 **Note**: This process is optional as it's always run automatically before testing.
 
+The deployed contract addresses will be stored in `migrations/contracts.json` under the 'development' key.
+
 ### Rinkeby Public Test Network
 
     ./truffle migrate --network rinkeby
 
 Before migration, ensure that the account used for deployment as seen in `truffle.js` has enough ether. If that is not the case, request for some at [Rinkeby Faucet](https://faucet.rinkeby.io/).
 
-After a successful *public* migration, append output of the command to the beginning of `migrations/history.txt` file. We can retrieve contract addresses from it later.
+After a successful *public* migration, append output of the command to the beginning of `migrations/history.txt` file. It is helpful to see how many times we have migrated.
+
+The deployed contract addresses will be stored in `migrations/contracts.json` under the 'rinkeby' key.
 
 **WARNING**: Do NOT use the same account for both testnet and mainnet deployments.
 
@@ -92,6 +96,12 @@ Record *public* upgrades in `migrations/history.txt`. This practice will be auto
 ## Release
 
 After migrations or upgrades, export the final contract JSONs to be used in [Exodia.World Web Client](https://github.com/Exodia-World/exodia.world-web-client) by running `./helpers/release.js`. Copy files in the `release` directory into the `src/app/contracts` directory of the web client.
+
+Environment variable RELEASE_ENV can be set to dev/staging/production as such:
+
+    RELEASE_ENV=staging ./helpers/release.js
+
+By default, it will export development contracts.
 
 
 ## Configuration
