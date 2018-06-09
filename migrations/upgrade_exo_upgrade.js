@@ -1,6 +1,6 @@
 const EXOStorage = artifacts.require('EXOStorage');
 const EXOUpgrade = artifacts.require('EXOUpgrade');
-const upgradeHelper = require('./upgrade.js');
+const migrationHelper = require('./migration_helper.js');
 let network;
 
 module.exports = function (callback) {
@@ -9,9 +9,9 @@ module.exports = function (callback) {
       callback(err);
       return;
     }
-    network = upgradeHelper.getNetworkName(networkId);
+    network = migrationHelper.getNetworkName(networkId);
 
-    const contracts = upgradeHelper.loadContracts();
+    const contracts = migrationHelper.loadContracts();
     let exoStorageAddress, exoUpgradeAddress;
     if (network === 'rinkeby') {
       exoStorageAddress = contracts.rinkeby.EXOStorage;
@@ -34,7 +34,7 @@ module.exports = function (callback) {
             console.log('Contract lives at', _exoUpgrade.address);
 
             contracts[network].EXOUpgrade = _exoUpgrade.address;
-            upgradeHelper.saveContracts(contracts);
+            migrationHelper.saveContracts(contracts);
 
             callback();
           } else {

@@ -2,7 +2,7 @@ const HDWalletProvider = require('truffle-hdwallet-provider');
 
 // Do NOT use the same mnemonic for mainnet accounts.
 const testNetAccountMnemonic = 'decorate history baby ostrich middle battle verify east grunt body clean various';
-const eth: any = require('./eth.json');
+const eth = require('./eth.json');
 
 module.exports = {
   networks: {

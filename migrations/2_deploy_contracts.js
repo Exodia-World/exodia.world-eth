@@ -3,6 +3,7 @@ const EXOStorage = artifacts.require("EXOStorage");
 const EXOUpgrade = artifacts.require("EXOUpgrade");
 const EXORole = artifacts.require("EXORole");
 const EXOToken = artifacts.require("EXOToken");
+const migrationHelper = require('./migration_helper.js');
 
 module.exports = async function(deployer) {
   return deployer.deploy(EXOStorage).then(async () => {
@@ -64,6 +65,20 @@ module.exports = async function(deployer) {
         Web3Utils.soliditySha3('contract.storage.initialized'),
         true
       );
+
+      // Record contract addresses.
+      web3.version.getNetwork((err, networkId) => {
+        const network = migrationHelper.getNetworkName(networkId);
+
+        const contracts = migrationHelper.loadContracts();
+        contracts[network].EXOStorage = EXOStorage.address;
+        contracts[network].EXOUpgrade = EXOUpgrade.address;
+        contracts[network].EXORole = EXORole.address;
+        contracts[network].EXOToken = EXOToken.address;
+
+        migrationHelper.saveContracts(contracts);
+      });
+
       return deployer;
     });
   });
