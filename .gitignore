@@ -1,5 +1,6 @@
 # App specific
 eth.json
+migrations/outputs/contracts.dev.json
 
 # Logs
 logs
