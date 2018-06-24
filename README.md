@@ -67,7 +67,7 @@ Run the below command to migrate our contracts to the Ethereum local test networ
 
 **Note**: This process is optional as it's always run automatically before testing.
 
-The deployed contract addresses will be stored in `migrations/contracts.json` under the 'development' key.
+The deployed contract addresses will be stored in `migrations/outputs/contracts.dev.json`.
 
 ### Rinkeby Public Test Network
 
@@ -75,9 +75,9 @@ The deployed contract addresses will be stored in `migrations/contracts.json` un
 
 Before migration, ensure that the account used for deployment as seen in `truffle.js` has enough ether. If that is not the case, request for some at [Rinkeby Faucet](https://faucet.rinkeby.io/).
 
-After a successful *public* migration, append output of the command to the beginning of `migrations/history.txt` file. It is helpful to see how many times we have migrated.
+After a successful *public* migration, append output of the command to the beginning of `migrations/outputs/history.txt` file. It is helpful to see how many times we have migrated.
 
-The deployed contract addresses will be stored in `migrations/contracts.json` under the 'rinkeby' key.
+The deployed contract addresses will be stored in `migrations/outputs/contracts.rinkeby.json`.
 
 **WARNING**: Do NOT use the same account for both testnet and mainnet deployments.
 
@@ -90,7 +90,7 @@ To upgrade individual contracts, run the corresponding scripts in the `migration
 
     ./truffle exec upgrade_exo_token.js --network rinkeby // omit --network flag for local upgrades
 
-Record *public* upgrades in `migrations/history.txt`. This practice will be automated in the future. The latest deployed contract addresses are written in `migrations/contracts.json`.
+Record *public* upgrades in `migrations/outputs/history.txt`. This practice will be automated in the future. The latest deployed contract addresses are written in `migrations/outputs/contracts.json` or in one of the other files depending on selected network.
 
 
 ## Release
