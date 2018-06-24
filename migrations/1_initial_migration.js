@@ -7,9 +7,9 @@ module.exports = function(deployer) {
     web3.version.getNetwork((err, networkId) => {
       const network = migrationHelper.getNetworkName(networkId);
 
-      const contracts = migrationHelper.loadContracts();
-      contracts[network].Migrations = Migrations.address;
-      migrationHelper.saveContracts(contracts);
+      const contracts = migrationHelper.loadContracts(network);
+      contracts.Migrations = Migrations.address;
+      migrationHelper.saveContracts(contracts, network);
     });
   });
 };

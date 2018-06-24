@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 
 const fs = require('fs');
-const contracts = require('../migrations/contracts.json');
+const CONTRACTS_PATH = '../migrations/outputs/contracts.json';
+const RINKEBY_CONTRACTS_PATH = '../migrations/outputs/contracts.rinkeby.json';
+const DEV_CONTRACTS_PATH = '../migrations/outputs/contracts.dev.json';
+
 const releaseables = ['EXOToken'];
 
 for (releaseable of releaseables) {
@@ -12,11 +15,20 @@ for (releaseable of releaseables) {
     address: '',
     abi: contract.abi
   };
+
+  let contracts_path;
   if (release.env === 'dev') {
-    release.address = contracts['development'][releaseable];
+    contracts_path = DEV_CONTRACTS_PATH;
   } else if (release.env === 'staging') {
-    release.address = contracts['rinkeby'][releaseable];
+    contracts_path = RINKEBY_CONTRACTS_PATH;
+  } else if (release.env === 'prod') {
+    contracts_path = CONTRACTS_PATH;
+  } else {
+    console.log('Unidentified environment; do nothing.');
+    break;
   }
+  const contracts = require(contracts_path);
+  release.address = contracts[releaseable];
 
   fs.writeFileSync(`./release/${release.name}.json`, JSON.stringify(release));
 }

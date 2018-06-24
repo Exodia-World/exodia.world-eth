@@ -12,14 +12,14 @@ module.exports = function (callback) {
     }
     network = migrationHelper.getNetworkName(networkId);
 
-    const contracts = migrationHelper.loadContracts();
+    const contracts = migrationHelper.loadContracts(network);
     let exoStorageAddress, exoUpgradeAddress;
-    if (network === 'rinkeby') {
-      exoStorageAddress = contracts.rinkeby.EXOStorage;
-      exoUpgradeAddress = contracts.rinkeby.EXOUpgrade;
-    } else {
+    if (network === 'development') {
       exoStorageAddress = EXOStorage.address;
       exoUpgradeAddress = EXOUpgrade.address;
+    } else {
+      exoStorageAddress = contracts.EXOStorage;
+      exoUpgradeAddress = contracts.EXOUpgrade;
     }
     if (! exoStorageAddress || ! exoUpgradeAddress) {
       callback(new Error('Required contract addresses not found'));
@@ -49,8 +49,8 @@ module.exports = function (callback) {
             console.log('Transaction', result.receipt.transactionHash);
             console.log('Contract lives at', exoToken.address);
 
-            contracts[network].EXOToken = exoToken.address;
-            migrationHelper.saveContracts(contracts);
+            contracts.EXOToken = exoToken.address;
+            migrationHelper.saveContracts(contracts, network);
 
             callback();
           } else {

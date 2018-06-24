@@ -70,13 +70,13 @@ module.exports = async function(deployer) {
       web3.version.getNetwork((err, networkId) => {
         const network = migrationHelper.getNetworkName(networkId);
 
-        const contracts = migrationHelper.loadContracts();
-        contracts[network].EXOStorage = EXOStorage.address;
-        contracts[network].EXOUpgrade = EXOUpgrade.address;
-        contracts[network].EXORole = EXORole.address;
-        contracts[network].EXOToken = EXOToken.address;
+        const contracts = migrationHelper.loadContracts(network);
+        contracts.EXOStorage = EXOStorage.address;
+        contracts.EXOUpgrade = EXOUpgrade.address;
+        contracts.EXORole = EXORole.address;
+        contracts.EXOToken = EXOToken.address;
 
-        migrationHelper.saveContracts(contracts);
+        migrationHelper.saveContracts(contracts, network);
       });
 
       return deployer;
