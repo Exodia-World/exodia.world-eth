@@ -21,6 +21,6 @@
   "devDependencies": {
     "ganache-cli": "^6.1.0-beta.0",
     "json-query": "^2.2.2",
-    "truffle": "^4.0.5"
+    "truffle": "4.0.5"
   }
 }

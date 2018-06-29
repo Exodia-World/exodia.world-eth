@@ -57,7 +57,7 @@ Add more tests to the `test` directory. Please do so. Code is incomplete without
 
 ### Ganache Local Test Network
 
-For development, we use an Ethereum local test network with [ganache-cli](https://github.com/trufflesuite/ganache-cli) as its client. Run the following to start.
+For development, we use an Ethereum local test network with [ganache-cli](https://github.com/trufflesuite/ganache-cli) as its client. Make sure you're running at least version 8.0.0 of Node JS.  You can check your current version by running the command node -v at your command line. Run the following to start.
 
     ./ganache-cli-x
 
