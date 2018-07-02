@@ -50,13 +50,17 @@ Is there something that you wish to exist in—or better yet—be removed from E
 Each core programmer independently reviews pull requests every few days and each will suggest a revision. If there is no more revision needed, one of the core programmers will merge it into Exodia.World. As a rule of thumb, any code should satisfies all or at least a few of these criteria:
 
 * *Simple* - it should be readable, has clear semantics, and use intuitive solutions
-* *Small* - it should be small in text and in runtime space
+* *Small* - it should be concise and be frugal with runtime memory
 * *Fast* - it should be fast enough for its purpose
 * *Focused* - each of its components should do one and only one thing well
-* *Isolated* - it should try its best to NOT depend on or change external state
-* *Correct* - its should work as expected and accompanied by tests
+* *Isolated* - it should try its best NOT to depend on or to change external state
+* *Correct* - it should work as expected and accompanied by tests
+* *Robust* - it should gracefully handle errors and edge cases
 * *Reusable* - it should prefer general/abstract solutions over specialized ones
+* *Composable* - it should be easily composed with other components
 * *Documented* - its behavior should be clearly and thoroughly documented
+
+Obviously, it is almost impossible to nail all those things down for every pull request. Consider them as ideals or goals we strive for.
 
 # Code of Conduct
 
